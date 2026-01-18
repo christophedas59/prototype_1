@@ -167,33 +167,153 @@ HitPauseManager="*res://scripts/hit_pause_manager.gd"
 
 ## Fichiers modifiés
 
-1. **Créés**:
-   - `scripts/hit_pause_manager.gd` - Nouveau singleton
+1. **Créés** (Phase 1 - Optimisations):
+   - `scripts/hit_pause_manager.gd` - Singleton hit-pause
+   - `scripts/performance_monitor.gd` - Moniteur de performance optionnel
 
-2. **Modifiés**:
-   - `scripts/fighter.gd` - Optimisations multiples
-   - `project.godot` - Ajout de l'autoload
+2. **Créés** (Phase 2 - Refactoring composants):
+   - `scripts/combat_entity.gd` - Remplace `fighter.gd`
+   - `scripts/components/health_bar_component.gd` - Composant barres de vie
+   - `scripts/components/targeting_system.gd` - Composant ciblage
+   - `scripts/components/combat_feedback.gd` - Composant feedback combat
 
-3. **Inchangés** (compatibilité totale):
-   - `scenes/fighter.tscn`
-   - `scenes/warrior.tscn`
-   - `scenes/zombie.tscn`
-   - `scenes/battle.tscn`
+3. **Modifiés**:
+   - `scripts/fighter.gd` - **SUPPRIMÉ** (remplacé par `combat_entity.gd`)
+   - `scenes/fighter.tscn` - Mis à jour pour utiliser `combat_entity.gd` + composants
+   - `project.godot` - Ajout de l'autoload HitPauseManager
+
+4. **Inchangés** (héritage maintenu):
+   - `scenes/warrior.tscn` - Hérite de `fighter.tscn`
+   - `scenes/zombie.tscn` - Hérite de `fighter.tscn`
+   - `scenes/battle.tscn` - Instancie warrior et zombies
 
 ---
 
 ## Notes de maintenance
 
 ### Points d'attention
-1. Le cache de ciblage se rafraîchit tous les 100ms - ajuster `TARGET_CACHE_INTERVAL` si besoin
-2. Les textures doivent rester aux mêmes chemins (préchargement statique)
+1. Le cache de ciblage se rafraîchit tous les 100ms - ajuster `cache_refresh_interval` dans TargetingSystem
+2. Les textures doivent rester aux mêmes chemins (préchargement statique dans HealthBarComponent)
 3. Le HitPauseManager est global - un seul hit-pause actif à la fois
+4. Les composants doivent être ajoutés comme enfants dans la scène (voir `fighter.tscn`)
+5. Initialiser les composants via `initialize()` dans le `_ready()` du parent
+
+### Utilisation des composants pour de nouvelles entités
+
+Pour créer une nouvelle entité (boss, tourelle, etc.) :
+
+1. Créer une scène héritant de `CharacterBody2D` ou `StaticBody2D`
+2. Ajouter les composants nécessaires :
+   - `HealthBarComponent` : Si l'entité a des PV
+   - `TargetingSystem` : Si l'entité doit cibler des ennemis
+   - `CombatFeedback` : Si l'entité subit des dégâts avec feedback
+3. Créer un script attaché qui appelle `component.initialize()` dans `_ready()`
+4. Appeler `component.update(delta)` dans `_physics_process()`
+
+Exemple minimaliste (tourelle statique) :
+```gdscript
+extends StaticBody2D
+
+@onready var targeting: Node = $TargetingSystem
+
+func _ready():
+    targeting.initialize(self, "enemy")
+
+func _physics_process(delta):
+    targeting.update(delta)
+    var target = targeting.get_closest_target()
+    if target:
+        shoot_at(target)
+```
 
 ### Optimisations futures possibles
 - Object pooling pour les projectiles (si ajoutés)
 - Spatial hashing pour le ciblage (si >20 entités)
 - Frustum culling pour animations hors écran
 - Utilisation de VisibleOnScreenNotifier2D pour désactiver entités hors caméra
+- Composant d'état (StateMachine) pour IA plus complexe
+
+---
+
+## 6. Refactoring en Composants Réutilisables
+
+**Date**: 2026-01-18
+
+**Fichiers créés**:
+- `scripts/combat_entity.gd` (remplace `fighter.gd`)
+- `scripts/components/health_bar_component.gd`
+- `scripts/components/targeting_system.gd`
+- `scripts/components/combat_feedback.gd`
+
+**Problème résolu**:
+- `fighter.gd` faisait 549 lignes avec trop de responsabilités
+- Code difficile à réutiliser pour d'autres types d'entités (boss, tourelles, projectiles)
+- Testabilité limitée (tout couplé dans un seul fichier)
+- Duplication de logique si on voulait plusieurs types d'entités
+
+**Solution - Architecture en composants**:
+
+### HealthBarComponent (146 lignes)
+```gdscript
+# Gère :
+- Affichage TextureProgressBar avec styles (Player/Enemy/Elite/Boss)
+- Barre "ghost" FTL (rattrapage retardé)
+- Préchargement des textures
+- API: initialize(), update_bars(), hide_bars(), apply_style()
+```
+
+### TargetingSystem (105 lignes)
+```gdscript
+# Gère :
+- Cache de cibles rafraîchi tous les 0.1s
+- Recherche de la cible la plus proche
+- Validation de cibles (vivantes, valides)
+- Optimisation distance_squared_to()
+- API: initialize(), update(), get_closest_target(), is_target_valid()
+```
+
+### CombatFeedback (113 lignes)
+```gdscript
+# Gère :
+- Flash visuel lors de dégâts (tween réutilisé)
+- Knockback (recul physique)
+- I-frames (invincibilité temporaire)
+- Hit-pause (via HitPauseManager)
+- API: initialize(), update(), apply_damage_feedback(), is_invulnerable()
+```
+
+### CombatEntity (326 lignes, -223 lignes)
+```gdscript
+# Se concentre sur :
+- Déplacement (joueur ou IA)
+- Attaque + cooldown
+- Animations + orientation
+- Orchestration des composants
+```
+
+**Gains d'architecture**:
+- **Réutilisabilité**: Les composants peuvent être attachés à n'importe quel Node (boss, tourelles, projectiles)
+- **Maintenabilité**: -41% de lignes dans le fichier principal (549 → 326 lignes)
+- **Testabilité**: Chaque composant peut être testé indépendamment
+- **Extensibilité**: Ajout facile de nouvelles entités en combinant les composants
+- **Séparation des responsabilités**: Un composant = une responsabilité claire
+
+**Structure de scène**:
+```
+Fighter (CharacterBody2D)
+├── Visual (AnimatedSprite2D)
+├── BodyCollision (CollisionShape2D)
+├── HealthBar (TextureProgressBar)
+├── HealthBarGhost (TextureProgressBar)
+├── HealthBarComponent (Node)
+├── TargetingSystem (Node)
+└── CombatFeedback (Node)
+```
+
+**Compatibilité**:
+- Les scènes `warrior.tscn` et `zombie.tscn` héritent de `fighter.tscn` et fonctionnent sans modification
+- Les exports restent identiques dans l'Inspector
+- 100% rétrocompatible avec les scènes existantes
 
 ---
 
