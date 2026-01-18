@@ -1,14 +1,15 @@
-[gd_scene load_steps=5 format=3 uid="uid://d7nwbidoa28l"]
+[gd_scene load_steps=8 format=3 uid="uid://d7nwbidoa28l"]
 
-[ext_resource type="Script" uid="uid://bnara8oge54s5" path="res://scripts/fighter.gd" id="1_a4q2m"]
+[ext_resource type="Script" path="res://scripts/combat_entity.gd" id="1_a4q2m"]
 [ext_resource type="Texture2D" uid="uid://dhp4ijkds4wlg" path="res://art/ui/bar/hp_under.png" id="2_rsphg"]
 [ext_resource type="Texture2D" uid="uid://df5he8su6yxak" path="res://art/ui/bar/hp_over.png" id="3_tlqsq"]
 [ext_resource type="Texture2D" uid="uid://cbmr8dus2gpjq" path="res://art/ui/bar/hp_progress_player.png" id="4_eelhu"]
+[ext_resource type="Script" path="res://scripts/components/health_bar_component.gd" id="5_comp1"]
+[ext_resource type="Script" path="res://scripts/components/targeting_system.gd" id="6_comp2"]
+[ext_resource type="Script" path="res://scripts/components/combat_feedback.gd" id="7_comp3"]
 
 [node name="Fighter" type="CharacterBody2D"]
 script = ExtResource("1_a4q2m")
-ftl_delay = 0.15
-ftl_catchup_time = 0.35
 
 [node name="Visual" type="AnimatedSprite2D" parent="."]
 
@@ -37,3 +38,14 @@ value = 100.0
 texture_under = ExtResource("2_rsphg")
 texture_over = ExtResource("3_tlqsq")
 texture_progress = ExtResource("4_eelhu")
+
+[node name="HealthBarComponent" type="Node" parent="."]
+script = ExtResource("5_comp1")
+ftl_delay = 0.15
+ftl_catchup_time = 0.35
+
+[node name="TargetingSystem" type="Node" parent="."]
+script = ExtResource("6_comp2")
+
+[node name="CombatFeedback" type="Node" parent="."]
+script = ExtResource("7_comp3")
