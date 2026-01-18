@@ -13,7 +13,21 @@ extends CharacterBody2D
 ##
 
 # -------------------------------------------------------------------
-# 1) PARAMÈTRES (EXPORTS) — réglables dans l’Inspector
+# 1) CONSTANTES — Préchargement des textures (optimisation)
+# -------------------------------------------------------------------
+
+const TEX_HP_UNDER = preload("res://art/ui/bar/hp_under.png")
+const TEX_HP_OVER = preload("res://art/ui/bar/hp_over.png")
+const TEX_HP_PLAYER = preload("res://art/ui/bar/hp_progress_player.png")
+const TEX_HP_ENEMY = preload("res://art/ui/bar/hp_progress_enemy.png")
+const TEX_HP_ELITE = preload("res://art/ui/bar/hp_progress_elite.png")
+const TEX_HP_BOSS = preload("res://art/ui/bar/hp_progress_boss.png")
+const TEX_HP_GHOST_PLAYER = preload("res://art/ui/bar/hp_ghost_player.png")
+const TEX_HP_GHOST_ENEMY = preload("res://art/ui/bar/hp_ghost_enemy.png")
+
+
+# -------------------------------------------------------------------
+# 2) PARAMÈTRES (EXPORTS) — réglables dans l'Inspector
 # -------------------------------------------------------------------
 
 @export var is_player: bool = false
@@ -63,7 +77,7 @@ enum HealthBarStyle { PLAYER, ENEMY, ELITE, BOSS }
 
 
 # -------------------------------------------------------------------
-# 2) RÉFÉRENCES NODES (ONREADY)
+# 3) RÉFÉRENCES NODES (ONREADY)
 # -------------------------------------------------------------------
 
 @onready var visual: AnimatedSprite2D = $Visual
@@ -73,7 +87,7 @@ enum HealthBarStyle { PLAYER, ENEMY, ELITE, BOSS }
 
 
 # -------------------------------------------------------------------
-# 3) ÉTAT RUNTIME (variables internes)
+# 4) ÉTAT RUNTIME (variables internes)
 # -------------------------------------------------------------------
 
 var hp: int
@@ -91,62 +105,15 @@ var ghost_tween: Tween
 # Cible persistante (autobattler + ennemis)
 var current_target: Node2D = null
 
+# Cache pour le ciblage (optimisation)
+var _cached_targets: Array[Node2D] = []
+var _target_cache_timer: float = 0.0
+const TARGET_CACHE_INTERVAL: float = 0.1  # Mise à jour tous les 0.1s
 
-# -------------------------------------------------------------------
-# 4) HIT-PAUSE (statique, global) — évite les pauses qui se chevauchent
-# -------------------------------------------------------------------
+# Réutilisation du flash tween (optimisation)
+var _flash_tween: Tween = null
 
-static func request_hit_pause(tree: SceneTree, duration: float, time_scale: float) -> void:
-	if tree == null:
-		return
 
-	var now_ms := Time.get_ticks_msec()
-	var until_ms := now_ms + int(duration * 1000.0)
-
-	var current_until := 0
-	if tree.has_meta("hit_pause_until"):
-		current_until = int(tree.get_meta("hit_pause_until"))
-
-	# Si une pause existe déjà et dure plus longtemps, on ne raccourcit pas
-	if until_ms <= current_until:
-		return
-
-	tree.set_meta("hit_pause_until", until_ms)
-
-	# Applique la pause
-	Engine.time_scale = time_scale
-
-	# Lance (ou relance) un scheduler de restore
-	_schedule_hit_pause_restore(tree)
-
-static func _schedule_hit_pause_restore(tree: SceneTree) -> void:
-	# Évite de spammer des timers en parallèle
-	var running := false
-	if tree.has_meta("hit_pause_restore_running"):
-		running = bool(tree.get_meta("hit_pause_restore_running"))
-	if running:
-		return
-
-	tree.set_meta("hit_pause_restore_running", true)
-	_try_restore_hit_pause(tree)
-
-static func _try_restore_hit_pause(tree: SceneTree) -> void:
-	var now_ms := Time.get_ticks_msec()
-	var until_ms := 0
-	if tree.has_meta("hit_pause_until"):
-		until_ms = int(tree.get_meta("hit_pause_until"))
-
-	if now_ms >= until_ms:
-		Engine.time_scale = 1.0
-		tree.set_meta("hit_pause_restore_running", false)
-		return
-
-	# Il reste du temps → recheck quand ce sera fini.
-	var remaining := float(until_ms - now_ms) / 1000.0
-	# ignore_time_scale=true pour que le timer déclenche même pendant la pause
-	tree.create_timer(remaining, true, false, true).timeout.connect(func():
-		_try_restore_hit_pause(tree)
-	)
 
 
 # -------------------------------------------------------------------
@@ -183,6 +150,12 @@ func _physics_process(delta: float) -> void:
 	attack_timer = max(attack_timer - delta, 0.0)
 	invuln_timer = max(invuln_timer - delta, 0.0)
 
+	# Mise à jour du cache de ciblage
+	_target_cache_timer -= delta
+	if _target_cache_timer <= 0.0:
+		_update_target_cache()
+		_target_cache_timer = TARGET_CACHE_INTERVAL
+
 	# --- Logique de déplacement / IA ---
 	if is_player:
 		if autonomous:
@@ -203,13 +176,15 @@ func _physics_process(delta: float) -> void:
 		if target != null:
 			update_facing_from_vector(target.global_position - global_position)
 
+	# Un seul appel à move_and_slide() par frame (optimisation)
+	move_and_slide()
+
 	update_animation()
 
 
 func _exit_tree() -> void:
-	# Sécurité : éviter de rester “ralenti” si on quitte la scène pendant un hit-pause
-	if Engine.time_scale != 1.0:
-		Engine.time_scale = 1.0
+	# Sécurité : éviter de rester "ralenti" si on quitte la scène pendant un hit-pause
+	HitPauseManager.force_restore()
 
 
 # -------------------------------------------------------------------
@@ -220,7 +195,6 @@ func player_move() -> void:
 	# Pour un proto lisible : pas de déplacement pendant le slash
 	if is_attacking:
 		velocity = Vector2.ZERO
-		move_and_slide()
 		return
 
 	var input_dir := Vector2(
@@ -232,7 +206,6 @@ func player_move() -> void:
 		input_dir = input_dir.normalized()
 
 	velocity = input_dir * move_speed
-	move_and_slide()
 
 
 func autonomous_move_and_fight(target_group: String) -> void:
@@ -242,7 +215,6 @@ func autonomous_move_and_fight(target_group: String) -> void:
 
 	if current_target == null:
 		velocity = Vector2.ZERO
-		move_and_slide()
 		return
 
 	var to_target := current_target.global_position - global_position
@@ -255,25 +227,21 @@ func autonomous_move_and_fight(target_group: String) -> void:
 	if dist <= attack_range:
 		velocity = Vector2.ZERO
 		try_attack(current_target)
-		move_and_slide()
 		return
 
 	# Poursuite si pas en train de slasher
 	velocity = Vector2.ZERO if is_attacking else to_target.normalized() * move_speed
-	move_and_slide()
 
 
 func enemy_move() -> void:
 	# Ennemi : même logique que l'autobattler, mais la cible est le groupe player
 	if is_attacking:
 		velocity = Vector2.ZERO
-		move_and_slide()
 		return
 
 	var target := get_closest_alive_in_group("player")
 	if target == null:
 		velocity = Vector2.ZERO
-		move_and_slide()
 		return
 
 	current_target = target
@@ -287,11 +255,9 @@ func enemy_move() -> void:
 	if dist <= attack_range:
 		velocity = Vector2.ZERO
 		try_attack(target)
-		move_and_slide()
 		return
 
 	velocity = to_target.normalized() * move_speed
-	move_and_slide()
 
 
 # -------------------------------------------------------------------
@@ -302,21 +268,46 @@ func is_target_valid(t: Node2D) -> bool:
 	return is_instance_valid(t) and t.get("is_dead") != true
 
 
+func _update_target_cache() -> void:
+	"""Met à jour le cache des cibles potentielles (optimisation)"""
+	_cached_targets.clear()
+
+	# Détermine le groupe à cibler
+	var target_group := ""
+	if is_player or autonomous:
+		target_group = "enemy"
+	elif is_enemy:
+		target_group = "player"
+	else:
+		return
+
+	var nodes := get_tree().get_nodes_in_group(target_group)
+	for n in nodes:
+		if n is Node2D:
+			var nd := n as Node2D
+			if nd.get("is_dead") != true:
+				_cached_targets.append(nd)
+
+
 func get_closest_alive_in_group(group_name: String) -> Node2D:
-	var nodes := get_tree().get_nodes_in_group(group_name)
+	"""Trouve la cible la plus proche en utilisant le cache"""
 	var best: Node2D = null
 	var best_d: float = INF
 
-	for n in nodes:
-		if not (n is Node2D):
+	# Utilise le cache si disponible et valide
+	var search_list := _cached_targets if _cached_targets.size() > 0 else get_tree().get_nodes_in_group(group_name)
+
+	for n in search_list:
+		if not is_instance_valid(n) or not (n is Node2D):
 			continue
+
 		var nd := n as Node2D
 
-		# Ignore les morts (si la propriété n’existe pas, get() renvoie null)
+		# Ignore les morts
 		if nd.get("is_dead") == true:
 			continue
 
-		var d: float = global_position.distance_to(nd.global_position)
+		var d: float = global_position.distance_squared_to(nd.global_position)  # Plus rapide que distance_to
 		if d < best_d:
 			best_d = d
 			best = nd
@@ -392,21 +383,23 @@ func take_damage(amount: int, from: Node2D = null) -> void:
 	hp = clamp(hp - amount, 0, max_hp)
 	update_health_bar()
 
-	# Hit-pause (feedback d’impact)
+	# Hit-pause (feedback d'impact) via singleton
 	if enable_hit_pause:
-		request_hit_pause(get_tree(), hit_pause_duration, hit_pause_scale)
+		HitPauseManager.request_hit_pause(hit_pause_duration, hit_pause_scale)
 
 	# Knockback (recul) si on connaît l'attaquant
 	if from != null and from is Node2D:
 		var dir := (global_position - from.global_position).normalized()
 		knockback_velocity = dir * knockback_force
 
-	# Flash rouge rapide
+	# Flash rouge rapide (réutilisation du tween)
+	if _flash_tween != null and _flash_tween.is_running():
+		_flash_tween.kill()
+
 	visual.modulate = Color(1, 0.6, 0.6)
-	get_tree().create_timer(0.08).timeout.connect(func():
-		if is_instance_valid(visual):
-			visual.modulate = Color(1, 1, 1)
-	)
+	_flash_tween = create_tween()
+	_flash_tween.tween_interval(0.08)
+	_flash_tween.tween_property(visual, "modulate", Color(1, 1, 1), 0.0)
 
 	if hp <= 0:
 		die()
@@ -490,36 +483,32 @@ func apply_health_bar_style() -> void:
 	if not is_instance_valid(health_bar):
 		return
 
-	# Textures communes
-	var tex_under = load("res://art/ui/bar/hp_under.png")
-	var tex_over  = load("res://art/ui/bar/hp_over.png")
-
-	# Barre principale (HP réel)
-	health_bar.texture_under = tex_under
-	health_bar.texture_over  = tex_over
+	# Barre principale (HP réel) - utilise les constantes préchargées
+	health_bar.texture_under = TEX_HP_UNDER
+	health_bar.texture_over = TEX_HP_OVER
 
 	match health_bar_style:
 		HealthBarStyle.PLAYER:
-			health_bar.texture_progress = load("res://art/ui/bar/hp_progress_player.png")
+			health_bar.texture_progress = TEX_HP_PLAYER
 		HealthBarStyle.ENEMY:
-			health_bar.texture_progress = load("res://art/ui/bar/hp_progress_enemy.png")
+			health_bar.texture_progress = TEX_HP_ENEMY
 		HealthBarStyle.ELITE:
-			health_bar.texture_progress = load("res://art/ui/bar/hp_progress_elite.png")
+			health_bar.texture_progress = TEX_HP_ELITE
 		HealthBarStyle.BOSS:
-			health_bar.texture_progress = load("res://art/ui/bar/hp_progress_boss.png")
+			health_bar.texture_progress = TEX_HP_BOSS
 
 	# Barre ghost (FTL)
 	if not enable_ftl_bar or not is_instance_valid(health_bar_ghost):
 		return
 
-	health_bar_ghost.texture_under = tex_under
-	health_bar_ghost.texture_over  = tex_over
+	health_bar_ghost.texture_under = TEX_HP_UNDER
+	health_bar_ghost.texture_over = TEX_HP_OVER
 
 	match health_bar_style:
 		HealthBarStyle.PLAYER:
-			health_bar_ghost.texture_progress = load("res://art/ui/bar/hp_ghost_player.png")
+			health_bar_ghost.texture_progress = TEX_HP_GHOST_PLAYER
 		_:
-			health_bar_ghost.texture_progress = load("res://art/ui/bar/hp_ghost_enemy.png")
+			health_bar_ghost.texture_progress = TEX_HP_GHOST_ENEMY
 
 
 # -------------------------------------------------------------------
