@@ -16,7 +16,7 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-HitPauseManager="*res://scripts/hit_pause_manager.gd"
+HitPauseManager="*res://scripts/autoload/hit_pause_manager.gd"
 
 [display]
 

@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://b38xi184jibpw"]
 
-[ext_resource type="PackedScene" uid="uid://d7nwbidoa28l" path="res://scenes/fighter.tscn" id="1_bdwhi"]
-[ext_resource type="SpriteFrames" uid="uid://dwc1tvfwmio6h" path="res://art/characters/warrior/warrior_frames.tres" id="2_fvbna"]
+[ext_resource type="PackedScene" uid="uid://d7nwbidoa28l" path="res://scenes/entities/combat_entity.tscn" id="1_bdwhi"]
+[ext_resource type="SpriteFrames" uid="uid://dwc1tvfwmio6h" path="res://assets/sprites/characters/warrior/warrior_frames.tres" id="2_fvbna"]
 
 [node name="Fighter" instance=ExtResource("1_bdwhi")]
 is_player = true
