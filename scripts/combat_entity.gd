@@ -351,7 +351,7 @@ func update_animation() -> void:
 
 	# Recalcul du facing uniquement pour joueur manuel
 	if moving and (not autonomous) and (not is_enemy):
-		var knockbacking := feedback_comp.get_knockback_velocity().length() > 1.0
+		var knockbacking: bool = feedback_comp.get_knockback_velocity().length() > 1.0
 		if (not facing_lock_on_knockback) or (not knockbacking):
 			update_facing_from_vector(velocity)
 
