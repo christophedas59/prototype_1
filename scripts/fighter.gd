@@ -295,7 +295,7 @@ func get_closest_alive_in_group(group_name: String) -> Node2D:
 	var best_d: float = INF
 
 	# Utilise le cache si disponible et valide
-	var search_list := _cached_targets if _cached_targets.size() > 0 else get_tree().get_nodes_in_group(group_name)
+	var search_list: Array = _cached_targets if _cached_targets.size() > 0 else get_tree().get_nodes_in_group(group_name)
 
 	for n in search_list:
 		if not is_instance_valid(n) or not (n is Node2D):
