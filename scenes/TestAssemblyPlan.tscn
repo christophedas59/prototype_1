@@ -1,0 +1,24 @@
+[gd_scene load_steps=2 format=3 uid="uid://dl52v2m6oej1a"]
+
+[sub_resource type="GDScript" id="GDScript_fpg5c"]
+script/source = "# res://scripts/assembly/test_assembly_plan.gd
+extends Node
+
+func _ready() -> void:
+	var plan := AssemblyPlan.new()
+	plan.seed = 123456
+
+	# Dummy layers (no real assets yet)
+	plan.add_layer(\"body\", \"Characters/body/human/male/strong/walk.png\")
+	plan.add_layer(\"equipment\", \"Characters/equipment/weapons/sword/walk.png\", Vector2i(0, 0))
+
+	var dict := plan.to_dict()
+	var json := JSON.stringify(dict, \"\\t\") # pretty print with tabs
+	print(json)
+
+	# Optional: quit immediately if running headless tests
+	# get_tree().quit()
+"
+
+[node name="TestAssemblyPlan" type="Node"]
+script = SubResource("GDScript_fpg5c")

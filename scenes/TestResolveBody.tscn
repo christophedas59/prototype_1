@@ -1,0 +1,226 @@
+[gd_scene load_steps=2 format=3 uid="uid://bf0ajivmfxns0"]
+
+[sub_resource type="GDScript" id="GDScript_aqlfs"]
+script/source = "# res://scripts/assembly/test_resolve_body.gd
+extends Node
+
+const CATALOG_PATH := \"res://data/Characters_catalog.json\"
+const ASSETS_ROOT := \"C:/Godot/lpc/characters/\"
+
+func _ready() -> void:
+	var catalog := _load_json(CATALOG_PATH)
+	if catalog.is_empty():
+		push_error(\"Failed to load catalog: %s\" % CATALOG_PATH)
+		return
+
+	# Minimal intent (required fields + seed)
+	var intent := {
+		\"schema_version\": \"1.0\",
+		\"seed\": 123456,
+		\"identity\": {
+			\"race\": \"human\",
+			\"gender\": \"female\",
+			\"body\": { \"type\": \"thin\", \"skin_tone\": \"light\" },
+			\"hair\": { \"style\": \"short\", \"color\": \"brown\" }
+		},
+		\"loadout\": {
+			\"equipment\": {
+				\"main_hand\": { \"kind\": \"sword\", \"handedness\": \"one_handed\" },
+				\"off_hand\": { \"kind\": \"none\" }
+			}
+		},
+		\"constraints\": { \"allow_missing\": true }
+	}
+
+	# ------------------------------------------------------------
+	# 1) List available body animations (single source of truth)
+	# ------------------------------------------------------------
+	var anims: Array[String] = LayerResolver.list_available_body_animations(catalog, intent)
+	print(\"AVAILABLE BODY ANIMATIONS: \", anims)
+	print(\"COUNT: \", anims.size())
+
+	if anims.is_empty():
+		push_error(\"No body animations found\")
+		return
+
+	# Debug: body base (stable folder)
+	var bb: Dictionary = LayerResolver.resolve_body_base(catalog, intent)
+	print(\"BODY BASE => \", bb)
+
+	# Quick sanity check: resolve + inspect first animation
+	var first_anim := anims[0]
+	var rr_first := LayerResolver.resolve_body_for_animation(catalog, intent, first_anim)
+	print(\"resolve_body_for_animation(\", first_anim, \") => \", rr_first)
+
+	if not bool(rr_first.get(\"ok\", false)):
+		push_error(\"Body resolution failed for animation: \" + first_anim)
+		return
+
+	var full_first := ASSETS_ROOT + str(rr_first.get(\"path\", \"\"))
+	var info_first := SpriteSheetInspector.inspect(full_first, 64, 64)
+	print(\"BODY SHEET INFO (first anim): \", info_first)
+
+	# ------------------------------------------------------------
+	# 2) Debug: print one hair asset sample (to see tags)
+	# ------------------------------------------------------------
+	var printed := false
+	for a in catalog.get(\"assets\", []):
+		var ad: Dictionary = a
+		if str(ad.get(\"family\", \"\")) == \"hair\":
+			print(\"HAIR ASSET SAMPLE PATH: \", str(ad.get(\"path\", \"\")))
+			print(\"HAIR ASSET SAMPLE TAGS: \", ad.get(\"tags\", []))
+			printed = true
+			break
+	if not printed:
+		print(\"NO HAIR ASSETS FOUND IN CATALOG (family=='hair')\")
+
+	# ------------------------------------------------------------
+	# 3) Build body paths by animation (used for manifest + composite)
+	# ------------------------------------------------------------
+	var frame_w := 64
+	var frame_h := 64
+
+	var body_paths_by_anim := {}
+	for anim in anims:
+		var rr: Dictionary = LayerResolver.resolve_body_for_animation(catalog, intent, anim)
+		if bool(rr.get(\"ok\", false)):
+			body_paths_by_anim[anim] = str(rr.get(\"path\", \"\"))
+
+
+
+	# ------------------------------------------------------------
+	# 4) Build a minimal manifest (vertical clips, 4 directions per anim)
+	# ------------------------------------------------------------
+	var manifest := {
+		\"schema_version\": \"1.0\",
+		\"image\": { \"frame_width\": frame_w, \"frame_height\": frame_h },
+		\"layout\": {
+			\"type\": \"vertical_clips\",
+			\"direction_order\": [\"south\", \"west\", \"east\", \"north\"]
+		},
+		\"clips\": [],
+		\"layers_used\": [
+			{ \"layer\": \"body\", \"note\": \"body-only v1 test\" }
+		]
+	}
+
+	var y := 0
+	for anim in anims:
+		var rel_path := str(body_paths_by_anim.get(anim, \"\"))
+		if rel_path == \"\":
+			continue
+
+		var full_path := ASSETS_ROOT + rel_path
+		var info2 := SpriteSheetInspector.inspect(full_path, frame_w, frame_h)
+		if not bool(info2.get(\"ok\", false)):
+			continue
+
+		var frames := int(info2.get(\"cols\", 0))
+		for dir in [\"south\", \"west\", \"east\", \"north\"]:
+			manifest[\"clips\"].append({
+				\"animation\": anim,
+				\"direction\": dir,
+				\"x\": 0,
+				\"y\": y,
+				\"frames\": frames,
+				\"source_path\": rel_path
+			})
+			y += frame_h
+
+	print(\"MANIFEST CLIPS:\", manifest[\"clips\"].size())
+
+	# ------------------------------------------------------------
+	# 5) Export manifest + body-only PNG
+	# ------------------------------------------------------------
+	var out_dir := \"user://output\"
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir))
+
+	var out_manifest_path := out_dir + \"/character_manifest.json\"
+	_write_json(out_manifest_path, manifest)
+	print(\"WROTE MANIFEST (GLOBAL): \", ProjectSettings.globalize_path(out_manifest_path))
+
+	var body_png_path := out_dir + \"/character.png\"
+	var export_body := BodySheetExporter.export_from_manifest(manifest, ASSETS_ROOT, body_png_path)
+	print(\"PNG EXPORT RESULT (body-only): \", export_body)
+	print(\"WROTE BODY PNG (GLOBAL): \", ProjectSettings.globalize_path(body_png_path))
+
+	# ------------------------------------------------------------
+	# 6) Build hair paths by animation (stable hair base logic is in resolver)
+	# ------------------------------------------------------------
+	var hb := LayerResolver.resolve_hair_base(catalog, intent)
+	print(\"HAIR BASE => \", hb)
+
+	var hair_by_anim := {}
+	for anim in anims:
+		var hr: Dictionary = LayerResolver.resolve_hair_for_animation(catalog, intent, anim)
+		if bool(hr.get(\"ok\", false)):
+			hair_by_anim[anim] = str(hr.get(\"path\", \"\"))
+
+	print(\"HAIR COVERAGE: \", hair_by_anim.size(), \" / \", anims.size())
+	
+	# Build per-animation head paths
+	var head_by_anim := {}
+	for anim in anims:
+		var hd: Dictionary = LayerResolver.resolve_head_for_animation(catalog, intent, anim)
+		if bool(hd.get(\"ok\", false)):
+			head_by_anim[anim] = str(hd.get(\"path\", \"\"))
+
+	print(\"HEAD COVERAGE: \", head_by_anim.size(), \" / \", anims.size())
+
+	# ------------------------------------------------------------
+	# 7) Composite body + hair (explicit layer order)
+	# ------------------------------------------------------------
+	
+	var layer_paths_by_anim := {}
+	layer_paths_by_anim[\"body\"] = body_paths_by_anim
+	layer_paths_by_anim[\"head\"] = head_by_anim
+	layer_paths_by_anim[\"hair\"] = hair_by_anim
+
+	var layer_order: Array[String] = [\"body\", \"head\", \"hair\"]
+
+	var composite_png_path := out_dir + \"/character_body_head_hair.png\"
+	var export_comp := CompositeSheetExporter.export_from_layer_paths(
+		manifest,
+		ASSETS_ROOT,
+		layer_paths_by_anim,
+		layer_order,
+		composite_png_path
+	)
+	print(\"COMPOSITE EXPORT RESULT (body+head+hair): \", export_comp)
+	print(\"WROTE COMPOSITE PNG (GLOBAL): \", ProjectSettings.globalize_path(composite_png_path))
+
+
+
+
+func _write_json(path: String, data: Dictionary) -> void:
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		push_error(\"Failed to write: \" + path)
+		return
+	f.store_string(JSON.stringify(data, \"\\t\"))
+	f.close()
+
+
+func _load_json(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		push_error(\"JSON file not found: %s\" % path)
+		return {}
+
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		push_error(\"Cannot open JSON file: %s\" % path)
+		return {}
+
+	var text := f.get_as_text()
+	f.close()
+
+	var parsed = JSON.parse_string(text)
+	if typeof(parsed) != TYPE_DICTIONARY:
+		push_error(\"Invalid JSON root (expected Dictionary): %s\" % path)
+		return {}
+
+	return parsed
+"
+
+[node name="TestResolveBody" type="Node"]
+script = SubResource("GDScript_aqlfs")

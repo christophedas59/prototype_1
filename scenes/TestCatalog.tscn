@@ -1,0 +1,181 @@
+[gd_scene load_steps=2 format=3 uid="uid://r8fo2palag0e"]
+
+[sub_resource type="GDScript" id="GDScript_ln64k"]
+script/source = "extends Node
+
+@onready var loader := CatalogLoader.new()
+
+# --- LPC ---
+const FRAME_W := 64
+const FRAME_H := 64
+const DIRS := 4
+
+# Anti-freeze pendant la génération
+const YIELD_EVERY := 1
+
+# MODE ULTRA SAFE : pas de preview GPU (évite crash teardown Vulkan)
+const PREVIEW_ENABLED := false
+const PREVIEW_SCALE := 0.25 # ignoré si PREVIEW_ENABLED=false
+
+# Export runtime SAFE (ne déclenche pas l'import editor)
+const EXPORT_PATH := \"user://output/body_available_only.png\"
+
+var _catalog_loaded := false
+var _is_generating := false
+var _cancel_requested := false
+
+func _ready() -> void:
+	# IMPORTANT: rien d’automatique ici.
+	add_child(loader)
+	loader.load_catalog(\"res://data/Characters_catalog.json\")
+	_catalog_loaded = true
+	print(\"Ready ✅  Clique dans la fenêtre de jeu puis appuie sur G pour générer (export only).\")
+
+func _exit_tree() -> void:
+	_cancel_requested = true
+
+	# Cleanup texture si jamais preview activé un jour
+	var sprite := get_node_or_null(\"PreviewSprite\") as Sprite2D
+	if sprite:
+		sprite.texture = null
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		var k := event as InputEventKey
+		if k.keycode == KEY_G:
+			if _is_generating:
+				print(\"Génération déjà en cours…\")
+				return
+			_is_generating = true
+			_cancel_requested = false
+			await generate_available_only()
+			_is_generating = false
+
+
+# ------------------------------------------------------------
+# Génère une planche qui contient UNIQUEMENT les animations trouvées.
+# Pas de placeholder, beaucoup plus léger.
+# ------------------------------------------------------------
+func generate_available_only() -> void:
+	if not _catalog_loaded:
+		push_error(\"Catalogue pas chargé.\")
+		return
+
+	# \"Personnage\" temporaire
+	var base_tags: Array[String] = [
+		\"gender:female\",
+		\"body_type:thin\",
+		\"race:human\"
+	]
+
+	# 1) Collecter les animations dispo
+	var entries: Array = []  # each: {anim:String, img:Image, cols:int, rows:int}
+	for i in range(LpcManifest.ANIM_ORDER.size()):
+		if _cancel_requested:
+			print(\"Cancelled ✅\")
+			return
+		if (i % YIELD_EVERY) == 0:
+			await get_tree().process_frame
+
+		var anim: String = LpcManifest.ANIM_ORDER[i]
+		var tags: Array[String] = base_tags.duplicate()
+		tags.append(\"animation:%s\" % anim)
+
+		var asset: Dictionary = loader.resolve_animation_asset([\"body\"], tags)
+		if asset.is_empty():
+			continue
+
+		var img := Image.new()
+		var err: int = img.load(loader.asset_to_abs_path(asset))
+		if err != OK:
+			continue
+
+		var size: Vector2i = img.get_size()
+		var cols: int = int(size.x / FRAME_W)
+		var rows: int = int(size.y / FRAME_H)
+
+		entries.append({
+			\"anim\": anim,
+			\"img\": img,
+			\"cols\": cols,
+			\"rows\": rows
+		})
+
+	print(\"Animations disponibles: \", entries.size(), \" / \", LpcManifest.ANIM_ORDER.size())
+	if entries.is_empty():
+		push_error(\"Aucune animation trouvée pour ce set.\")
+		return
+
+	# 2) Taille finale minimale (layout vertical compact)
+	var out_w: int = 0
+	var out_h: int = 0
+	for e in entries:
+		var cols: int = e[\"cols\"]
+		var rows: int = e[\"rows\"]
+		out_w = maxi(out_w, cols * FRAME_W)
+		out_h += mini(rows, 4) * FRAME_H
+
+	if _cancel_requested:
+		print(\"Cancelled ✅\")
+		return
+
+	# 3) Image finale
+	var out := Image.create(out_w, out_h, false, Image.FORMAT_RGBA8)
+	out.fill(Color(0, 0, 0, 0))
+
+	# 4) Blit vertical
+	var y := 0
+	for idx in range(entries.size()):
+		if _cancel_requested:
+			print(\"Cancelled ✅\")
+			return
+		if (idx % YIELD_EVERY) == 0:
+			await get_tree().process_frame
+
+		var e = entries[idx]
+		var img: Image = e[\"img\"]
+		var cols: int = e[\"cols\"]
+		var rows: int = e[\"rows\"]
+		var copy_rows: int = mini(rows, 4)
+
+		blit_rows(out, img, Vector2i(0, y), cols, copy_rows)
+		y += copy_rows * FRAME_H
+
+	# 5) Preview (désactivé par défaut)
+	if PREVIEW_ENABLED and not _cancel_requested:
+		var sprite := get_node_or_null(\"PreviewSprite\") as Sprite2D
+		if sprite:
+			sprite.texture = null
+			sprite.texture = ImageTexture.create_from_image(out)
+			sprite.position = Vector2(40, 40)
+			sprite.scale = Vector2(PREVIEW_SCALE, PREVIEW_SCALE)
+
+	# 6) Export SAFE en user://
+	if _cancel_requested:
+		print(\"Cancelled ✅\")
+		return
+
+	await get_tree().process_frame
+
+	var dir := DirAccess.open(\"user://\")
+	if dir:
+		dir.make_dir_recursive(\"output\")
+
+	var save_err: int = out.save_png(EXPORT_PATH)
+	if save_err != OK:
+		push_error(\"save_png failed: \" + str(save_err))
+	else:
+		print(\"✅ Exported: \", EXPORT_PATH)
+		print(\"Tip: Project -> Open User Data Folder pour récupérer le PNG.\")
+
+
+func blit_rows(dst: Image, src: Image, dst_pos: Vector2i, cols: int, rows: int) -> void:
+	for r in range(rows):
+		var src_rect := Rect2i(0, r * FRAME_H, cols * FRAME_W, FRAME_H)
+		dst.blit_rect(src, src_rect, dst_pos + Vector2i(0, r * FRAME_H))
+"
+
+[node name="TestCatalog" type="Node"]
+script = SubResource("GDScript_ln64k")
+
+[node name="PreviewSprite" type="Sprite2D" parent="."]

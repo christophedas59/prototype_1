@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3 uid="uid://cbriek6u70a1c"]
+
+[ext_resource type="PackedScene" uid="uid://d7nwbidoa28l" path="res://scenes/fighter.tscn" id="1_httt1"]
+[ext_resource type="SpriteFrames" uid="uid://dpsiv1d1c2arv" path="res://art/characters/zombie_frames.tres" id="2_xepks"]
+
+[node name="Fighter" instance=ExtResource("1_httt1")]
+is_enemy = true
+look_at_target = true
+move_speed = 20.0
+attack_cooldown = 3.0
+attack_damage = 5
+max_hp = 40
+
+[node name="Visual" parent="." index="0"]
+sprite_frames = ExtResource("2_xepks")
+animation = &"idle_left"

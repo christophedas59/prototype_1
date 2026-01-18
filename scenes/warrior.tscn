@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3 uid="uid://b38xi184jibpw"]
+
+[ext_resource type="PackedScene" uid="uid://d7nwbidoa28l" path="res://scenes/fighter.tscn" id="1_bdwhi"]
+[ext_resource type="SpriteFrames" uid="uid://dwc1tvfwmio6h" path="res://art/characters/warrior/warrior_frames.tres" id="2_fvbna"]
+
+[node name="Fighter" instance=ExtResource("1_bdwhi")]
+is_player = true
+autonomous = true
+move_speed = 100.0
+attack_damage = 5
+max_hp = 120
+health_bar_style = 0
+
+[node name="Visual" parent="." index="0"]
+sprite_frames = ExtResource("2_fvbna")
+animation = &"death"
