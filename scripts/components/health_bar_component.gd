@@ -13,14 +13,14 @@ extends Node
 # TEXTURES PRÉCHARGÉES (optimisation)
 # -------------------------------------------------------------------
 
-const TEX_HP_UNDER = preload("res://art/ui/bar/hp_under.png")
-const TEX_HP_OVER = preload("res://art/ui/bar/hp_over.png")
-const TEX_HP_PLAYER = preload("res://art/ui/bar/hp_progress_player.png")
-const TEX_HP_ENEMY = preload("res://art/ui/bar/hp_progress_enemy.png")
-const TEX_HP_ELITE = preload("res://art/ui/bar/hp_progress_elite.png")
-const TEX_HP_BOSS = preload("res://art/ui/bar/hp_progress_boss.png")
-const TEX_HP_GHOST_PLAYER = preload("res://art/ui/bar/hp_ghost_player.png")
-const TEX_HP_GHOST_ENEMY = preload("res://art/ui/bar/hp_ghost_enemy.png")
+const TEX_HP_UNDER = preload("res://assets/sprites/ui/bar/hp_under.png")
+const TEX_HP_OVER = preload("res://assets/sprites/ui/bar/hp_over.png")
+const TEX_HP_PLAYER = preload("res://assets/sprites/ui/bar/hp_progress_player.png")
+const TEX_HP_ENEMY = preload("res://assets/sprites/ui/bar/hp_progress_enemy.png")
+const TEX_HP_ELITE = preload("res://assets/sprites/ui/bar/hp_progress_elite.png")
+const TEX_HP_BOSS = preload("res://assets/sprites/ui/bar/hp_progress_boss.png")
+const TEX_HP_GHOST_PLAYER = preload("res://assets/sprites/ui/bar/hp_ghost_player.png")
+const TEX_HP_GHOST_ENEMY = preload("res://assets/sprites/ui/bar/hp_ghost_enemy.png")
 
 
 # -------------------------------------------------------------------

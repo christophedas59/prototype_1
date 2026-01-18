@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3 uid="uid://cbriek6u70a1c"]
 
-[ext_resource type="PackedScene" uid="uid://d7nwbidoa28l" path="res://scenes/fighter.tscn" id="1_httt1"]
-[ext_resource type="SpriteFrames" uid="uid://dpsiv1d1c2arv" path="res://art/characters/zombie_frames.tres" id="2_xepks"]
+[ext_resource type="PackedScene" uid="uid://d7nwbidoa28l" path="res://scenes/entities/combat_entity.tscn" id="1_httt1"]
+[ext_resource type="SpriteFrames" uid="uid://dpsiv1d1c2arv" path="res://assets/sprites/characters/zombie_frames.tres" id="2_xepks"]
 
 [node name="Fighter" instance=ExtResource("1_httt1")]
 is_enemy = true

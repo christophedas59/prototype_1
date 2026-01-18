@@ -1,9 +1,9 @@
 [gd_resource type="SpriteFrames" load_steps=70 format=3 uid="uid://dwc1tvfwmio6h"]
 
-[ext_resource type="Texture2D" uid="uid://of5fxx50bp65" path="res://art/characters/warrior/warrior_1_hurt.png" id="1_a8vwy"]
-[ext_resource type="Texture2D" uid="uid://ce3x347a8bjy5" path="res://art/characters/warrior/warrior_1_idle.png" id="2_d5nkt"]
-[ext_resource type="Texture2D" uid="uid://bpa3no43wb4tn" path="res://art/characters/warrior/warrior_1_slash.png" id="3_0g4gb"]
-[ext_resource type="Texture2D" uid="uid://bx4ew1ni2mora" path="res://art/characters/warrior/warrior_1_walk.png" id="4_s2d8l"]
+[ext_resource type="Texture2D" uid="uid://of5fxx50bp65" path="res://assets/sprites/characters/warrior/warrior_1_hurt.png" id="1_a8vwy"]
+[ext_resource type="Texture2D" uid="uid://ce3x347a8bjy5" path="res://assets/sprites/characters/warrior/warrior_1_idle.png" id="2_d5nkt"]
+[ext_resource type="Texture2D" uid="uid://bpa3no43wb4tn" path="res://assets/sprites/characters/warrior/warrior_1_slash.png" id="3_0g4gb"]
+[ext_resource type="Texture2D" uid="uid://bx4ew1ni2mora" path="res://assets/sprites/characters/warrior/warrior_1_walk.png" id="4_s2d8l"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_vgppn"]
 atlas = ExtResource("1_a8vwy")

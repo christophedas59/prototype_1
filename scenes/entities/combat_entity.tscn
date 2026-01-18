@@ -1,9 +1,9 @@
 [gd_scene load_steps=8 format=3 uid="uid://d7nwbidoa28l"]
 
-[ext_resource type="Script" path="res://scripts/combat_entity.gd" id="1_a4q2m"]
-[ext_resource type="Texture2D" uid="uid://dhp4ijkds4wlg" path="res://art/ui/bar/hp_under.png" id="2_rsphg"]
-[ext_resource type="Texture2D" uid="uid://df5he8su6yxak" path="res://art/ui/bar/hp_over.png" id="3_tlqsq"]
-[ext_resource type="Texture2D" uid="uid://cbmr8dus2gpjq" path="res://art/ui/bar/hp_progress_player.png" id="4_eelhu"]
+[ext_resource type="Script" path="res://scripts/entities/combat_entity.gd" id="1_a4q2m"]
+[ext_resource type="Texture2D" uid="uid://dhp4ijkds4wlg" path="res://assets/sprites/ui/bar/hp_under.png" id="2_rsphg"]
+[ext_resource type="Texture2D" uid="uid://df5he8su6yxak" path="res://assets/sprites/ui/bar/hp_over.png" id="3_tlqsq"]
+[ext_resource type="Texture2D" uid="uid://cbmr8dus2gpjq" path="res://assets/sprites/ui/bar/hp_progress_player.png" id="4_eelhu"]
 [ext_resource type="Script" path="res://scripts/components/health_bar_component.gd" id="5_comp1"]
 [ext_resource type="Script" path="res://scripts/components/targeting_system.gd" id="6_comp2"]
 [ext_resource type="Script" path="res://scripts/components/combat_feedback.gd" id="7_comp3"]
