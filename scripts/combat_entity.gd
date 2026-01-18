@@ -120,7 +120,7 @@ func _physics_process(delta: float) -> void:
 
 	# Look at target (mode manuel uniquement)
 	if look_at_target and not autonomous and velocity.length() <= 1.0:
-		var target := targeting_comp.get_closest_target()
+		var target: Node2D = targeting_comp.get_closest_target()
 		if target != null:
 			update_facing_from_vector(target.global_position - global_position)
 
@@ -201,7 +201,7 @@ func enemy_move() -> void:
 		velocity = Vector2.ZERO
 		return
 
-	var target := targeting_comp.get_closest_target()
+	var target: Node2D = targeting_comp.get_closest_target()
 	if target == null:
 		velocity = Vector2.ZERO
 		return
