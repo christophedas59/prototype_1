@@ -1,6 +1,0 @@
-[gd_scene load_steps=2 format=3 uid="uid://bf0ajivmfxns0"]
-
-[ext_resource type="Script" uid="uid://b3pnbhkmsos1r" path="res://scripts/assembly/test_resolve_body.gd" id="1_gjddm"]
-
-[node name="TestResolveBody" type="Node"]
-script = ExtResource("1_gjddm")

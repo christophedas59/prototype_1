@@ -1,8 +1,0 @@
-[gd_scene load_steps=2 format=3 uid="uid://r8fo2palag0e"]
-
-[ext_resource type="Script" uid="uid://im7gcpko0nwq" path="res://scripts/test_catalog.gd" id="1_f4mkr"]
-
-[node name="TestCatalog" type="Node"]
-script = ExtResource("1_f4mkr")
-
-[node name="PreviewSprite" type="Sprite2D" parent="."]
