@@ -1,4 +1,5 @@
 extends CharacterBody2D
+class_name CombatEntity
 ##
 ## CombatEntity.gd — Entité de combat modulaire (Player + Ennemis)
 ## Godot 4.5.x — Prototype 2D top-down
@@ -19,9 +20,9 @@ extends CharacterBody2D
 # COMPOSANTS (ONREADY)
 # -------------------------------------------------------------------
 
-@onready var health_bar_comp: Node = $HealthBarComponent
-@onready var targeting_comp: Node = $TargetingSystem
-@onready var feedback_comp: Node = $CombatFeedback
+@onready var health_bar_comp: HealthBarComponent = $HealthBarComponent
+@onready var targeting_comp: TargetingSystem = $TargetingSystem
+@onready var feedback_comp: CombatFeedback = $CombatFeedback
 
 
 # -------------------------------------------------------------------
@@ -72,7 +73,7 @@ var attack_timer: float = 0.0
 var is_attacking: bool = false
 var is_dead: bool = false
 
-var current_target: Node2D = null
+var current_target: CombatEntity = null
 
 
 # -------------------------------------------------------------------
@@ -120,7 +121,7 @@ func _physics_process(delta: float) -> void:
 
 	# Look at target (mode manuel uniquement)
 	if look_at_target and not autonomous and velocity.length() <= 1.0:
-		var target: Node2D = targeting_comp.get_closest_target()
+		var target: CombatEntity = targeting_comp.get_closest_target()
 		if target != null:
 			update_facing_from_vector(target.global_position - global_position)
 
@@ -201,7 +202,7 @@ func enemy_move() -> void:
 		velocity = Vector2.ZERO
 		return
 
-	var target: Node2D = targeting_comp.get_closest_target()
+	var target: CombatEntity = targeting_comp.get_closest_target()
 	if target == null:
 		velocity = Vector2.ZERO
 		return
@@ -225,7 +226,7 @@ func enemy_move() -> void:
 # ATTAQUE / DÉGÂTS / MORT
 # -------------------------------------------------------------------
 
-func try_attack(target: Node2D) -> void:
+func try_attack(target: CombatEntity) -> void:
 	if is_dead or is_attacking or attack_timer > 0.0 or target == null:
 		return
 
@@ -239,8 +240,7 @@ func try_attack(target: Node2D) -> void:
 	play_attack_animation()
 
 	# Dégâts sans hitbox (proto)
-	if target.has_method("take_damage"):
-		target.call("take_damage", attack_damage, self)
+	target.take_damage(attack_damage, self)
 
 
 func play_attack_animation() -> void:

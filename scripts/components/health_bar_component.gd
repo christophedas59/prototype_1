@@ -1,4 +1,5 @@
 extends Node
+class_name HealthBarComponent
 ##
 ## HealthBarComponent.gd — Composant réutilisable pour barres de vie
 ## Godot 4.5.x

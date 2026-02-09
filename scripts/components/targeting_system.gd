@@ -1,4 +1,5 @@
 extends Node
+class_name TargetingSystem
 ##
 ## TargetingSystem.gd — Composant réutilisable pour ciblage optimisé
 ## Godot 4.5.x
@@ -22,16 +23,16 @@ extends Node
 # ÉTAT INTERNE
 # -------------------------------------------------------------------
 
-var _cached_targets: Array[Node2D] = []
+var _cached_targets: Array[CombatEntity] = []
 var _cache_timer: float = 0.0
-var _owner_node: Node2D = null  # Référence au node parent (pour distance)
+var _owner_node: CombatEntity = null  # Référence au node parent (pour distance)
 
 
 # -------------------------------------------------------------------
 # INITIALISATION
 # -------------------------------------------------------------------
 
-func initialize(owner: Node2D, group: String) -> void:
+func initialize(owner: CombatEntity, group: String) -> void:
 	"""Doit être appelé par le parent après _ready()"""
 	_owner_node = owner
 	target_group = group
@@ -54,25 +55,25 @@ func update(delta: float) -> void:
 # API PUBLIQUE
 # -------------------------------------------------------------------
 
-func get_closest_target() -> Node2D:
+func get_closest_target() -> CombatEntity:
 	"""Trouve la cible la plus proche en utilisant le cache"""
 	if not is_instance_valid(_owner_node):
 		return null
 
-	var best: Node2D = null
+	var best: CombatEntity = null
 	var best_dist_sq: float = INF
 
 	# Utilise le cache si disponible, sinon fallback direct
 	var search_list: Array = _cached_targets if _cached_targets.size() > 0 else get_tree().get_nodes_in_group(target_group)
 
 	for n in search_list:
-		if not is_instance_valid(n) or not (n is Node2D):
+		if not is_instance_valid(n) or not (n is CombatEntity):
 			continue
 
-		var node := n as Node2D
+		var node := n as CombatEntity
 
 		# Ignore les morts
-		if node.get("is_dead") == true:
+		if node.is_dead:
 			continue
 
 		# Utilise distance_squared_to (plus rapide que distance_to)
@@ -84,9 +85,9 @@ func get_closest_target() -> Node2D:
 	return best
 
 
-func is_target_valid(target: Node2D) -> bool:
+func is_target_valid(target: CombatEntity) -> bool:
 	"""Vérifie si une cible est valide (existe et vivante)"""
-	return is_instance_valid(target) and target.get("is_dead") != true
+	return is_instance_valid(target) and not target.is_dead
 
 
 func clear_cache() -> void:
@@ -107,7 +108,7 @@ func _update_cache() -> void:
 
 	var nodes := get_tree().get_nodes_in_group(target_group)
 	for n in nodes:
-		if n is Node2D:
-			var node := n as Node2D
-			if node.get("is_dead") != true:
+		if n is CombatEntity:
+			var node := n as CombatEntity
+			if not node.is_dead:
 				_cached_targets.append(node)
