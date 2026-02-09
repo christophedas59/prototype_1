@@ -121,7 +121,7 @@ func _physics_process(delta: float) -> void:
 
 	# Look at target (mode manuel uniquement)
 	if look_at_target and not autonomous and velocity.length() <= 1.0:
-		var target: CombatEntity = targeting_comp.get_closest_target()
+		var target := targeting_comp.get_closest_target()
 		if target != null:
 			update_facing_from_vector(target.global_position - global_position)
 
@@ -129,10 +129,6 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	update_animation()
-
-
-func _exit_tree() -> void:
-	HitPauseManager.force_restore()
 
 
 # -------------------------------------------------------------------
@@ -178,7 +174,7 @@ func player_move() -> void:
 func autonomous_move_and_fight() -> void:
 	# Garde la cible tant qu'elle est vivante
 	if not targeting_comp.is_target_valid(current_target):
-		current_target = targeting_comp.get_closest_target()
+		current_target = _as_combat_entity(targeting_comp.get_closest_target())
 
 	if current_target == null:
 		velocity = Vector2.ZERO
@@ -202,7 +198,7 @@ func enemy_move() -> void:
 		velocity = Vector2.ZERO
 		return
 
-	var target: CombatEntity = targeting_comp.get_closest_target()
+	var target := _as_combat_entity(targeting_comp.get_closest_target())
 	if target == null:
 		velocity = Vector2.ZERO
 		return
@@ -220,6 +216,12 @@ func enemy_move() -> void:
 		return
 
 	velocity = to_target.normalized() * move_speed
+
+
+func _as_combat_entity(target: Node2D) -> CombatEntity:
+	if target == null or not (target is CombatEntity):
+		return null
+	return target as CombatEntity
 
 
 # -------------------------------------------------------------------

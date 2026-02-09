@@ -82,8 +82,10 @@ func update_bars(max_hp: int, current_hp: int, previous_hp: int) -> void:
 	health_bar_ghost.max_value = max_hp
 	health_bar_ghost.visible = show
 
-	# Soin : on snap la ghost
-	if health_bar_ghost.value < current_hp:
+	var took_damage := current_hp < previous_hp
+
+	# Soin (ou pas de changement) : on snap la ghost
+	if not took_damage:
 		health_bar_ghost.value = current_hp
 		return
 

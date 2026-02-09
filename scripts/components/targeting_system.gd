@@ -23,16 +23,16 @@ class_name TargetingSystem
 # ÉTAT INTERNE
 # -------------------------------------------------------------------
 
-var _cached_targets: Array[CombatEntity] = []
+var _cached_targets: Array[Node2D] = []
 var _cache_timer: float = 0.0
-var _owner_node: CombatEntity = null  # Référence au node parent (pour distance)
+var _owner_node: Node2D = null  # Référence au node parent (pour distance)
 
 
 # -------------------------------------------------------------------
 # INITIALISATION
 # -------------------------------------------------------------------
 
-func initialize(owner: CombatEntity, group: String) -> void:
+func initialize(owner: Node2D, group: String) -> void:
 	"""Doit être appelé par le parent après _ready()"""
 	_owner_node = owner
 	target_group = group
@@ -55,25 +55,25 @@ func update(delta: float) -> void:
 # API PUBLIQUE
 # -------------------------------------------------------------------
 
-func get_closest_target() -> CombatEntity:
+func get_closest_target() -> Node2D:
 	"""Trouve la cible la plus proche en utilisant le cache"""
 	if not is_instance_valid(_owner_node):
 		return null
 
-	var best: CombatEntity = null
+	var best: Node2D = null
 	var best_dist_sq: float = INF
 
 	# Utilise le cache si disponible, sinon fallback direct
 	var search_list: Array = _cached_targets if _cached_targets.size() > 0 else get_tree().get_nodes_in_group(target_group)
 
 	for n in search_list:
-		if not is_instance_valid(n) or not (n is CombatEntity):
+		if not is_instance_valid(n) or not (n is Node2D):
 			continue
 
-		var node := n as CombatEntity
+		var node := n as Node2D
 
-		# Ignore les morts
-		if node.is_dead:
+		# Ignore les morts si la propriété existe
+		if not _is_target_alive(node):
 			continue
 
 		# Utilise distance_squared_to (plus rapide que distance_to)
@@ -85,9 +85,9 @@ func get_closest_target() -> CombatEntity:
 	return best
 
 
-func is_target_valid(target: CombatEntity) -> bool:
+func is_target_valid(target: Node2D) -> bool:
 	"""Vérifie si une cible est valide (existe et vivante)"""
-	return is_instance_valid(target) and not target.is_dead
+	return is_instance_valid(target) and _is_target_alive(target)
 
 
 func clear_cache() -> void:
@@ -108,7 +108,15 @@ func _update_cache() -> void:
 
 	var nodes := get_tree().get_nodes_in_group(target_group)
 	for n in nodes:
-		if n is CombatEntity:
-			var node := n as CombatEntity
-			if not node.is_dead:
+		if n is Node2D:
+			var node := n as Node2D
+			if _is_target_alive(node):
 				_cached_targets.append(node)
+
+
+func _is_target_alive(node: Node) -> bool:
+	"""Considère une cible vivante par défaut, sauf si elle expose is_dead=true."""
+	var dead_flag: Variant = node.get("is_dead")
+	if typeof(dead_flag) == TYPE_BOOL and dead_flag:
+		return false
+	return true
