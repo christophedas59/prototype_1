@@ -27,10 +27,10 @@ func _process(delta: float) -> void:
 	# Mise à jour toutes les 0.5 secondes
 	if _elapsed >= 0.5:
 		var fps := _frame_count / _elapsed
-		var physics_fps := Engine.get_frames_per_second()
+		var physics_tps := Engine.physics_ticks_per_second
 
 		var stats := "FPS: %.1f\n" % fps
-		stats += "Physics FPS: %d\n" % physics_fps
+		stats += "Physics TPS (target): %d\n" % physics_tps
 		stats += "Time Scale: %.2f\n" % Engine.time_scale
 		stats += "Nodes: %d\n" % get_tree().get_node_count()
 

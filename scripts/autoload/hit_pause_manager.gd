@@ -9,9 +9,11 @@ extends Node
 
 var _pause_end_time: float = 0.0
 var _is_paused: bool = false
+var _default_time_scale: float = 1.0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS  # Continue pendant les pauses
+	_default_time_scale = Engine.time_scale
 
 
 func _process(delta: float) -> void:
@@ -30,6 +32,10 @@ func request_hit_pause(duration: float, time_scale: float) -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	var new_end := now + duration
 
+	# Capture la valeur courante avant d'entrer en hit-pause.
+	if not _is_paused:
+		_default_time_scale = Engine.time_scale
+
 	# Si une pause existe déjà et dure plus longtemps, on ne raccourcit pas
 	if _is_paused and new_end <= _pause_end_time:
 		return
@@ -40,7 +46,7 @@ func request_hit_pause(duration: float, time_scale: float) -> void:
 
 
 func _restore_time_scale() -> void:
-	Engine.time_scale = 1.0
+	Engine.time_scale = _default_time_scale
 	_is_paused = false
 
 
