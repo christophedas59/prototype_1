@@ -1,4 +1,5 @@
 extends Node
+class_name CombatFeedback
 ##
 ## CombatFeedback.gd — Composant réutilisable pour feedback de combat
 ## Godot 4.5.x
