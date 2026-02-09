@@ -8,7 +8,7 @@ Ce document liste toutes les optimisations de performance appliquées au projet.
 
 ## 1. Singleton HitPauseManager
 
-**Fichier créé**: [scripts/hit_pause_manager.gd](scripts/hit_pause_manager.gd)
+**Fichier créé**: [scripts/autoload/hit_pause_manager.gd](scripts/autoload/hit_pause_manager.gd)
 
 **Problème résolu**:
 - L'ancien système utilisait des métadonnées sur le SceneTree
@@ -30,10 +30,10 @@ Ce document liste toutes les optimisations de performance appliquées au projet.
 
 ## 2. Préchargement des textures de barres de vie
 
-**Fichier modifié**: [scripts/fighter.gd](scripts/fighter.gd) (lignes 19-26)
+**Fichier modifié**: [scripts/entities/combat_entity.gd](scripts/entities/combat_entity.gd)
 
 **Problème résolu**:
-- `load()` appelé 10 fois à l'initialisation de chaque Fighter
+- `load()` appelé 10 fois à l'initialisation de chaque entité de combat
 - Chargement synchrone bloquant
 
 **Solution**:
@@ -46,14 +46,14 @@ const TEX_HP_PLAYER = preload("res://art/ui/bar/hp_progress_player.png")
 
 **Gains de performance**:
 - Textures chargées au démarrage, pas à l'instance
-- Temps d'initialisation de Fighter réduit de ~60%
+- Temps d'initialisation d'une entité de combat réduit de ~60%
 - Pas de I/O disque pendant le gameplay
 
 ---
 
 ## 3. Cache de ciblage (Target Caching)
 
-**Fichier modifié**: [scripts/fighter.gd](scripts/fighter.gd) (lignes 109-111, 271-290)
+**Fichier modifié**: [scripts/entities/combat_entity.gd](scripts/entities/combat_entity.gd)
 
 **Problème résolu**:
 - `get_tree().get_nodes_in_group()` appelé plusieurs fois par frame
@@ -79,7 +79,7 @@ func _update_target_cache():
 
 ## 4. Élimination des appels redondants à `move_and_slide()`
 
-**Fichier modifié**: [scripts/fighter.gd](scripts/fighter.gd)
+**Fichier modifié**: [scripts/entities/combat_entity.gd](scripts/entities/combat_entity.gd)
 
 **Problème résolu**:
 - Chaque fonction de mouvement appelait `move_and_slide()`
@@ -94,14 +94,14 @@ func _update_target_cache():
 
 **Gains de performance**:
 - Réduction de 75% des calculs de collision
-- Physics engine sollicité 1 fois au lieu de 2-4 par Fighter
+- Physics engine sollicité 1 fois au lieu de 2-4 par entité
 - Avec 4 entités: 16 appels → 4 appels par frame
 
 ---
 
 ## 5. Optimisation des Tweens pour effets visuels
 
-**Fichier modifié**: [scripts/fighter.gd](scripts/fighter.gd) (lignes 114, 395-402)
+**Fichier modifié**: [scripts/entities/combat_entity.gd](scripts/entities/combat_entity.gd)
 
 **Problème résolu**:
 - Création d'un nouveau Tween à chaque flash de dégât
@@ -155,37 +155,36 @@ _flash_tween = create_tween()
 Dans [project.godot](project.godot):
 ```ini
 [autoload]
-HitPauseManager="*res://scripts/hit_pause_manager.gd"
+HitPauseManager="*res://scripts/autoload/hit_pause_manager.gd"
 ```
 
 ### Compatibilité
 - Godot 4.5.1+
-- Pas de breaking changes dans l'API publique
-- Les scènes existantes fonctionnent sans modification
+- Les scènes d'entités actives sont `scenes/entities/player_warrior.tscn` et `scenes/entities/enemy_zombie.tscn`, toutes deux basées sur `scenes/entities/combat_entity.tscn`
+- Vérifier les chemins de scripts/scènes si vous migrez une branche plus ancienne (anciens chemins `fighter.*` obsolètes)
 
 ---
 
 ## Fichiers modifiés
 
 1. **Créés** (Phase 1 - Optimisations):
-   - `scripts/hit_pause_manager.gd` - Singleton hit-pause
-   - `scripts/performance_monitor.gd` - Moniteur de performance optionnel
+   - `scripts/autoload/hit_pause_manager.gd` - Singleton hit-pause
+   - `scripts/debug/performance_monitor.gd` - Moniteur de performance optionnel
 
 2. **Créés** (Phase 2 - Refactoring composants):
-   - `scripts/combat_entity.gd` - Remplace `fighter.gd`
+   - `scripts/entities/combat_entity.gd` - Script principal des entités de combat
    - `scripts/components/health_bar_component.gd` - Composant barres de vie
    - `scripts/components/targeting_system.gd` - Composant ciblage
    - `scripts/components/combat_feedback.gd` - Composant feedback combat
 
 3. **Modifiés**:
-   - `scripts/fighter.gd` - **SUPPRIMÉ** (remplacé par `combat_entity.gd`)
-   - `scenes/fighter.tscn` - Mis à jour pour utiliser `combat_entity.gd` + composants
+   - `scenes/entities/combat_entity.tscn` - Scène de base utilisant `combat_entity.gd` + composants
    - `project.godot` - Ajout de l'autoload HitPauseManager
 
-4. **Inchangés** (héritage maintenu):
-   - `scenes/warrior.tscn` - Hérite de `fighter.tscn`
-   - `scenes/zombie.tscn` - Hérite de `fighter.tscn`
-   - `scenes/battle.tscn` - Instancie warrior et zombies
+4. **Scènes d'entités actuelles**:
+   - `scenes/entities/player_warrior.tscn` - Variante joueur (hérite de `combat_entity.tscn`)
+   - `scenes/entities/enemy_zombie.tscn` - Variante ennemi (hérite de `combat_entity.tscn`)
+   - `scenes/entities/combat_entity.tscn` - Base commune instanciée par les variantes
 
 ---
 
@@ -195,7 +194,7 @@ HitPauseManager="*res://scripts/hit_pause_manager.gd"
 1. Le cache de ciblage se rafraîchit tous les 100ms - ajuster `cache_refresh_interval` dans TargetingSystem
 2. Les textures doivent rester aux mêmes chemins (préchargement statique dans HealthBarComponent)
 3. Le HitPauseManager est global - un seul hit-pause actif à la fois
-4. Les composants doivent être ajoutés comme enfants dans la scène (voir `fighter.tscn`)
+4. Les composants doivent être ajoutés comme enfants dans la scène (voir `scenes/entities/combat_entity.tscn`)
 5. Initialiser les composants via `initialize()` dans le `_ready()` du parent
 
 ### Utilisation des composants pour de nouvelles entités
@@ -240,13 +239,13 @@ func _physics_process(delta):
 **Date**: 2026-01-18
 
 **Fichiers créés**:
-- `scripts/combat_entity.gd` (remplace `fighter.gd`)
+- `scripts/entities/combat_entity.gd` (script principal des entités de combat)
 - `scripts/components/health_bar_component.gd`
 - `scripts/components/targeting_system.gd`
 - `scripts/components/combat_feedback.gd`
 
 **Problème résolu**:
-- `fighter.gd` faisait 549 lignes avec trop de responsabilités
+- L'ancien script d'entité monolithique faisait 549 lignes avec trop de responsabilités
 - Code difficile à réutiliser pour d'autres types d'entités (boss, tourelles, projectiles)
 - Testabilité limitée (tout couplé dans un seul fichier)
 - Duplication de logique si on voulait plusieurs types d'entités
@@ -300,7 +299,7 @@ func _physics_process(delta):
 
 **Structure de scène**:
 ```
-Fighter (CharacterBody2D)
+CombatEntity (CharacterBody2D)
 ├── Visual (AnimatedSprite2D)
 ├── BodyCollision (CollisionShape2D)
 ├── HealthBar (TextureProgressBar)
@@ -311,9 +310,9 @@ Fighter (CharacterBody2D)
 ```
 
 **Compatibilité**:
-- Les scènes `warrior.tscn` et `zombie.tscn` héritent de `fighter.tscn` et fonctionnent sans modification
-- Les exports restent identiques dans l'Inspector
-- 100% rétrocompatible avec les scènes existantes
+- Les scènes `scenes/entities/player_warrior.tscn` et `scenes/entities/enemy_zombie.tscn` héritent de `scenes/entities/combat_entity.tscn`
+- Les exports principaux restent identiques dans l'Inspector pour les variantes d'entités actuelles
+- Les projets sur une ancienne arborescence doivent migrer leurs chemins de scripts et scènes vers le dossier `entities`
 
 ---
 
