@@ -16,7 +16,7 @@ func _ready() -> void:
 	_default_time_scale = Engine.time_scale
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	if not _is_paused:
 		return
 

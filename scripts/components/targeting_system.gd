@@ -32,9 +32,9 @@ var _owner_node: Node2D = null  # Référence au node parent (pour distance)
 # INITIALISATION
 # -------------------------------------------------------------------
 
-func initialize(owner: Node2D, group: String) -> void:
+func initialize(owner_node: Node2D, group: String) -> void:
 	"""Doit être appelé par le parent après _ready()"""
-	_owner_node = owner
+	_owner_node = owner_node
 	target_group = group
 	_update_cache()
 
@@ -64,7 +64,9 @@ func get_closest_target() -> Node2D:
 	var best_dist_sq: float = INF
 
 	# Utilise le cache si disponible, sinon fallback direct
-	var search_list: Array = _cached_targets if _cached_targets.size() > 0 else get_tree().get_nodes_in_group(target_group)
+	var search_list: Array = _cached_targets
+	if search_list.is_empty():
+		search_list = get_tree().get_nodes_in_group(target_group)
 
 	for n in search_list:
 		if not is_instance_valid(n) or not (n is Node2D):
