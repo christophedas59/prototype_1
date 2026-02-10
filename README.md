@@ -101,3 +101,4 @@ Voir [docs/OPTIMIZATIONS.md](docs/OPTIMIZATIONS.md) pour les détails.
 ## 📝 Licence
 
 Projet prototype à usage éducatif et de démonstration.
+CI test
