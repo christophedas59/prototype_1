@@ -17,7 +17,6 @@ jobs:
         with:
           version: "4.5.1"
           use-dotnet: false
-          install-export-templates: false
 
       - name: Godot version
         run: godot --headless --version
