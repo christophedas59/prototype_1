@@ -25,11 +25,14 @@ class_name CombatFeedback
 @export var flash_duration: float = 0.08
 
 
+const DEBUG_HITS := false
+
 # -------------------------------------------------------------------
 # ÉTAT INTERNE
 # -------------------------------------------------------------------
 
 var invuln_timer: float = 0.0
+var _invuln_until_msec: int = 0
 var knockback_velocity: Vector2 = Vector2.ZERO
 
 var _flash_tween: Tween = null
@@ -51,7 +54,10 @@ func initialize(visual_node: Node2D) -> void:
 
 func update(delta: float) -> void:
 	"""Met à jour les timers et knockback"""
-	invuln_timer = max(invuln_timer - delta, 0.0)
+	var previous_invuln := is_invulnerable()
+	_refresh_invulnerability()
+	if DEBUG_HITS and previous_invuln and not is_invulnerable():
+		print_debug("set invuln false", self, invuln_timer)
 
 	# Décroissance du knockback
 	if knockback_velocity.length() > 0.1:
@@ -64,13 +70,27 @@ func update(delta: float) -> void:
 
 func is_invulnerable() -> bool:
 	"""Retourne true si les i-frames sont actives"""
-	return invuln_timer > 0.0
+	_refresh_invulnerability()
+	return _invuln_until_msec > 0
+
+
+func _refresh_invulnerability() -> void:
+	var remaining_msec := _invuln_until_msec - Time.get_ticks_msec()
+	if remaining_msec <= 0:
+		_invuln_until_msec = 0
+		invuln_timer = 0.0
+		return
+
+	invuln_timer = float(remaining_msec) / 1000.0
 
 
 func apply_damage_feedback(attacker_position: Vector2, entity_position: Vector2) -> void:
 	"""Applique tous les feedbacks lors de dégâts"""
 	# Active les i-frames
+	_invuln_until_msec = Time.get_ticks_msec() + int(i_frames_duration * 1000.0)
 	invuln_timer = i_frames_duration
+	if DEBUG_HITS:
+		print_debug("set invuln true", self, invuln_timer)
 
 	# Hit-pause global
 	if enable_hit_pause:
@@ -107,6 +127,7 @@ func get_knockback_velocity() -> Vector2:
 func reset() -> void:
 	"""Réinitialise tous les feedbacks (utile à la mort)"""
 	invuln_timer = 0.0
+	_invuln_until_msec = 0
 	knockback_velocity = Vector2.ZERO
 
 	if _flash_tween != null and _flash_tween.is_running():
