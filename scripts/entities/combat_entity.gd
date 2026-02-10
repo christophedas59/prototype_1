@@ -429,13 +429,13 @@ func die() -> void:
 		body_collision.set_deferred("disabled", true)
 
 	if is_instance_valid(hurtbox_comp):
-		hurtbox_comp.set_deferred("monitoring", false)
+		hurtbox_comp.monitoring = false
 		if DEBUG_HITS:
-			print_debug("[hits] hurtbox monitoring queued -> false", self)
+			print_debug("[hits] hurtbox monitoring changed", self, hurtbox_comp.monitoring)
 	if is_instance_valid(melee_hitbox_comp):
-		melee_hitbox_comp.set_deferred("monitoring", false)
+		melee_hitbox_comp.monitoring = false
 		if DEBUG_HITS:
-			print_debug("[hits] hitbox monitoring queued -> false", self)
+			print_debug("[hits] hitbox monitoring changed", self, melee_hitbox_comp.monitoring)
 
 	# Anim death
 	var frames := visual.sprite_frames
