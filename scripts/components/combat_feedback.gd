@@ -55,7 +55,7 @@ func initialize(visual_node: Node2D) -> void:
 func update(delta: float) -> void:
 	"""Met à jour les timers et knockback"""
 	var previous_invuln := is_invulnerable()
-	invuln_timer = max(float(_invuln_until_msec - Time.get_ticks_msec()) / 1000.0, 0.0)
+	_refresh_invulnerability()
 	if DEBUG_HITS and previous_invuln and not is_invulnerable():
 		print_debug("set invuln false", self, invuln_timer)
 
@@ -70,7 +70,18 @@ func update(delta: float) -> void:
 
 func is_invulnerable() -> bool:
 	"""Retourne true si les i-frames sont actives"""
-	return Time.get_ticks_msec() < _invuln_until_msec
+	_refresh_invulnerability()
+	return _invuln_until_msec > 0
+
+
+func _refresh_invulnerability() -> void:
+	var remaining_msec := _invuln_until_msec - Time.get_ticks_msec()
+	if remaining_msec <= 0:
+		_invuln_until_msec = 0
+		invuln_timer = 0.0
+		return
+
+	invuln_timer = float(remaining_msec) / 1000.0
 
 
 func apply_damage_feedback(attacker_position: Vector2, entity_position: Vector2) -> void:
