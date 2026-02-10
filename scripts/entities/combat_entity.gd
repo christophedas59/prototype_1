@@ -426,7 +426,7 @@ func die() -> void:
 
 	# Désactive collision
 	if is_instance_valid(body_collision):
-		body_collision.disabled = true
+		body_collision.set_deferred("disabled", true)
 
 	if is_instance_valid(hurtbox_comp):
 		hurtbox_comp.monitoring = false
