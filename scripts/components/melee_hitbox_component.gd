@@ -12,7 +12,14 @@ var _already_hit: Dictionary = {}
 
 func _ready() -> void:
 	monitoring = false
+	set_physics_process(false)
 	area_entered.connect(_on_area_entered)
+
+
+func _physics_process(_delta: float) -> void:
+	if not _active:
+		return
+	_process_overlaps_now()
 
 
 func start_swing(attacker: Node2D, amount: int) -> void:
@@ -24,6 +31,12 @@ func start_swing(attacker: Node2D, amount: int) -> void:
 	_active = true
 	_already_hit.clear()
 	monitoring = true
+	set_physics_process(true)
+
+	# Important : si les entités sont déjà en contact, `area_entered` ne se redéclenche pas.
+	# On scanne donc explicitement les overlaps au début (et pendant la fenêtre active).
+	_process_overlaps_now()
+	call_deferred("_process_overlaps_now")
 
 	var timer := get_tree().create_timer(active_time)
 	timer.timeout.connect(_end_swing)
@@ -31,6 +44,7 @@ func start_swing(attacker: Node2D, amount: int) -> void:
 
 func _end_swing() -> void:
 	monitoring = false
+	set_physics_process(false)
 	_active = false
 	_attacker = null
 	_damage = 0
@@ -38,6 +52,16 @@ func _end_swing() -> void:
 
 
 func _on_area_entered(area: Area2D) -> void:
+	_try_hit_area(area)
+
+
+func _process_overlaps_now() -> void:
+	for area in get_overlapping_areas():
+		if area is Area2D:
+			_try_hit_area(area as Area2D)
+
+
+func _try_hit_area(area: Area2D) -> void:
 	if not _active:
 		return
 	if area == null or not area.has_method("receive_hit"):
