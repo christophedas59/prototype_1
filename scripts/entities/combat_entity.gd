@@ -23,6 +23,8 @@ class_name CombatEntity
 @onready var health_bar_comp: HealthBarComponent = $HealthBarComponent
 @onready var targeting_comp: TargetingSystem = $TargetingSystem
 @onready var feedback_comp: CombatFeedback = $CombatFeedback
+@onready var hurtbox_comp: HurtboxComponent = $Hurtbox
+@onready var melee_hitbox_comp: MeleeHitboxComponent = $AttackHitbox
 
 
 # -------------------------------------------------------------------
@@ -77,6 +79,24 @@ var current_target: CombatEntity = null
 
 
 # -------------------------------------------------------------------
+# CONTRAT PUBLIC (pour composants/IA externes)
+# -------------------------------------------------------------------
+
+func is_alive() -> bool:
+	"""Contrat explicite : indique si l'entité est vivante."""
+	return not is_dead
+
+
+func get_team() -> String:
+	"""Contrat explicite : expose la faction logique de l'entité."""
+	if is_player or autonomous:
+		return "player"
+	if is_enemy:
+		return "enemy"
+	return "neutral"
+
+
+# -------------------------------------------------------------------
 # CYCLE DE VIE
 # -------------------------------------------------------------------
 
@@ -94,6 +114,9 @@ func _ready() -> void:
 	# Connect l'animation finished
 	if not visual.animation_finished.is_connected(_on_animation_finished):
 		visual.animation_finished.connect(_on_animation_finished)
+
+	if not hurtbox_comp.hit_received.is_connected(_on_hurtbox_hit_received):
+		hurtbox_comp.hit_received.connect(_on_hurtbox_hit_received)
 
 
 func _physics_process(delta: float) -> void:
@@ -182,10 +205,11 @@ func autonomous_move_and_fight() -> void:
 
 	var to_target := current_target.global_position - global_position
 	var dist := to_target.length()
+	var trigger_range := _get_attack_trigger_range(current_target)
 
 	update_facing_from_vector(to_target)
 
-	if dist <= attack_range:
+	if dist <= trigger_range:
 		velocity = Vector2.ZERO
 		try_attack(current_target)
 		return
@@ -207,10 +231,11 @@ func enemy_move() -> void:
 
 	var to_target := target.global_position - global_position
 	var dist := to_target.length()
+	var trigger_range := _get_attack_trigger_range(target)
 
 	update_facing_from_vector(to_target)
 
-	if dist <= attack_range:
+	if dist <= trigger_range:
 		velocity = Vector2.ZERO
 		try_attack(target)
 		return
@@ -231,6 +256,8 @@ func _as_combat_entity(target: Node2D) -> CombatEntity:
 func try_attack(target: CombatEntity) -> void:
 	if is_dead or is_attacking or attack_timer > 0.0 or target == null:
 		return
+	if not _is_target_in_attack_range(target):
+		return
 
 	attack_timer = attack_cooldown
 	is_attacking = true
@@ -241,8 +268,59 @@ func try_attack(target: CombatEntity) -> void:
 
 	play_attack_animation()
 
-	# Dégâts sans hitbox (proto)
-	target.take_damage(attack_damage, self)
+	# Déclenche la hitbox de mêlée (détection via hurtbox + événements)
+	melee_hitbox_comp.start_swing(self, attack_damage)
+
+
+func _is_target_in_attack_range(target: CombatEntity) -> bool:
+	if target == null:
+		return false
+
+	var dist := global_position.distance_to(target.global_position)
+	return dist <= _get_attack_trigger_range(target)
+
+
+func _get_attack_trigger_range(target: CombatEntity) -> float:
+	"""
+	Évite la zone morte entre portée logique et portée collision réelle.
+	On limite la portée de déclenchement au contact hitbox/hurtbox si connu.
+	"""
+	var contact_range := _get_melee_contact_range(target)
+	if contact_range <= 0.0:
+		return attack_range
+
+	return min(attack_range, contact_range + 1.0)
+
+
+func _get_melee_contact_range(target: CombatEntity) -> float:
+	if target == null or not is_instance_valid(melee_hitbox_comp):
+		return -1.0
+
+	var attack_radius := _get_area_circle_radius(melee_hitbox_comp)
+	if attack_radius <= 0.0:
+		return -1.0
+
+	if not is_instance_valid(target.hurtbox_comp):
+		return -1.0
+
+	var hurtbox_radius := _get_area_circle_radius(target.hurtbox_comp)
+	if hurtbox_radius <= 0.0:
+		return -1.0
+
+	return attack_radius + hurtbox_radius
+
+
+func _get_area_circle_radius(area: Area2D) -> float:
+	if area == null:
+		return -1.0
+
+	for child in area.get_children():
+		if child is CollisionShape2D:
+			var collision := child as CollisionShape2D
+			if collision.shape is CircleShape2D:
+				return (collision.shape as CircleShape2D).radius
+
+	return -1.0
 
 
 func play_attack_animation() -> void:
@@ -278,6 +356,11 @@ func _on_animation_finished() -> void:
 				queue_free()
 		)
 
+
+
+
+func _on_hurtbox_hit_received(attacker: Node2D, amount: int, _hit_position: Vector2) -> void:
+	take_damage(amount, attacker)
 
 func take_damage(amount: int, from: Node2D = null) -> void:
 	if is_dead or feedback_comp.is_invulnerable():
@@ -316,6 +399,11 @@ func die() -> void:
 	# Désactive collision
 	if is_instance_valid(body_collision):
 		body_collision.disabled = true
+
+	if is_instance_valid(hurtbox_comp):
+		hurtbox_comp.monitoring = false
+	if is_instance_valid(melee_hitbox_comp):
+		melee_hitbox_comp.monitoring = false
 
 	# Anim death
 	var frames := visual.sprite_frames
