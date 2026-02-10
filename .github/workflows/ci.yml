@@ -27,3 +27,10 @@ jobs:
           GODOT_DISABLE_LEAK_CHECKS: "1"
         run: |
           godot --headless --editor --quit --path .
+
+      - name: Run GUT tests (headless)
+        env:
+          GODOT_DISABLE_LEAK_CHECKS: "1"
+        run: |
+          godot --headless -s addons/gut/gut_cmdln.gd \
+            -gdir=res://tests -ginclude_subdirs -gexit
