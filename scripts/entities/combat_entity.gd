@@ -26,6 +26,8 @@ class_name CombatEntity
 @onready var hurtbox_comp: HurtboxComponent = $Hurtbox
 @onready var melee_hitbox_comp: MeleeHitboxComponent = $AttackHitbox
 
+const DEBUG_HITS := false
+
 
 # -------------------------------------------------------------------
 # EXPORTS — Configuration générale
@@ -362,9 +364,13 @@ func _on_animation_finished() -> void:
 
 
 func _on_hurtbox_hit_received(attacker: Node2D, amount: int, _hit_position: Vector2) -> void:
+	if DEBUG_HITS:
+		print_debug("entity got hit_received", self, attacker, amount)
 	take_damage(amount, attacker)
 
 func take_damage(amount: int, from: Node2D = null) -> void:
+	if DEBUG_HITS:
+		print_debug("take_damage called", self, "invuln?", feedback_comp.is_invulnerable(), "hp", hp, "amount", amount)
 	if is_dead or feedback_comp.is_invulnerable():
 		return
 
