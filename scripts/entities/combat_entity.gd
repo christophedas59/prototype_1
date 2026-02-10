@@ -272,6 +272,7 @@ func try_attack(target: CombatEntity) -> void:
 	melee_hitbox_comp.start_swing(self, attack_damage)
 
 
+
 func _is_target_in_attack_range(target: CombatEntity) -> bool:
 	if target == null:
 		return false
@@ -321,6 +322,7 @@ func _get_area_circle_radius(area: Area2D) -> float:
 				return (collision.shape as CircleShape2D).radius
 
 	return -1.0
+
 
 
 func play_attack_animation() -> void:
