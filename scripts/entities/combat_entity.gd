@@ -271,6 +271,20 @@ func try_attack(target: CombatEntity) -> void:
 	play_attack_animation()
 
 	# Déclenche la hitbox de mêlée (détection via hurtbox + événements)
+	if DEBUG_HITS:
+		print_debug(
+			"[hits] try_attack/start_swing",
+			self,
+			"target=", target,
+			"dist=", global_position.distance_to(target.global_position),
+			"trigger_range=", _get_attack_trigger_range(target),
+			"time_scale=", Engine.time_scale,
+			"hit_pause_scale=", feedback_comp.hit_pause_scale,
+			"hitbox layer/mask=", str(melee_hitbox_comp.collision_layer) + "/" + str(melee_hitbox_comp.collision_mask),
+			"hurtbox layer/mask=", str(target.hurtbox_comp.collision_layer) + "/" + str(target.hurtbox_comp.collision_mask),
+			"hitbox monitoring=", melee_hitbox_comp.monitoring,
+			"hurtbox monitoring=", target.hurtbox_comp.monitoring
+		)
 	melee_hitbox_comp.start_swing(self, attack_damage)
 
 
@@ -292,7 +306,7 @@ func _get_attack_trigger_range(target: CombatEntity) -> float:
 	if contact_range <= 0.0:
 		return attack_range
 
-	return min(attack_range, contact_range + 1.0)
+	return min(attack_range, contact_range)
 
 
 func _get_melee_contact_range(target: CombatEntity) -> float:
@@ -365,13 +379,19 @@ func _on_animation_finished() -> void:
 
 func _on_hurtbox_hit_received(attacker: Node2D, amount: int, _hit_position: Vector2) -> void:
 	if DEBUG_HITS:
-		print_debug("entity got hit_received", self, attacker, amount)
+		print_debug("[hits] entity handler hit_received", self, attacker, amount)
 	take_damage(amount, attacker)
 
 func take_damage(amount: int, from: Node2D = null) -> void:
 	if DEBUG_HITS:
-		print_debug("take_damage called", self, "invuln?", feedback_comp.is_invulnerable(), "hp", hp, "amount", amount)
-	if is_dead or feedback_comp.is_invulnerable():
+		print_debug("[hits] take_damage called", self, "invuln?", feedback_comp.is_invulnerable(), "hp", hp, "amount", amount)
+	if is_dead:
+		if DEBUG_HITS:
+			print_debug("[hits] take_damage early-return is_dead", self)
+		return
+	if feedback_comp.is_invulnerable():
+		if DEBUG_HITS:
+			print_debug("[hits] take_damage early-return invulnerable", self)
 		return
 
 	var previous_hp := hp
@@ -410,8 +430,12 @@ func die() -> void:
 
 	if is_instance_valid(hurtbox_comp):
 		hurtbox_comp.monitoring = false
+		if DEBUG_HITS:
+			print_debug("[hits] hurtbox monitoring changed", self, hurtbox_comp.monitoring)
 	if is_instance_valid(melee_hitbox_comp):
 		melee_hitbox_comp.monitoring = false
+		if DEBUG_HITS:
+			print_debug("[hits] hitbox monitoring changed", self, melee_hitbox_comp.monitoring)
 
 	# Anim death
 	var frames := visual.sprite_frames

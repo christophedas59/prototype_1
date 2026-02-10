@@ -5,6 +5,8 @@ signal hit_confirmed(target: Node2D, amount: int)
 
 @export var active_time: float = 0.08
 
+const DEBUG_HITS := false
+
 var _attacker: Node2D = null
 var _damage: int = 0
 var _active: bool = false
@@ -24,6 +26,8 @@ func _physics_process(_delta: float) -> void:
 
 func start_swing(attacker: Node2D, amount: int) -> void:
 	if _active:
+		if DEBUG_HITS:
+			print_debug("[hits] start_swing ignored because already active", self)
 		return
 
 	_attacker = attacker
@@ -32,6 +36,17 @@ func start_swing(attacker: Node2D, amount: int) -> void:
 	_already_hit.clear()
 	monitoring = true
 	set_physics_process(true)
+	if DEBUG_HITS:
+		print_debug(
+			"[hits] start_swing",
+			self,
+			"active=", _active,
+			"monitoring=", monitoring,
+			"monitorable=", monitorable,
+			"layer=", collision_layer,
+			"mask=", collision_mask,
+			"time_scale=", Engine.time_scale
+		)
 
 	# Important : si les entités sont déjà en contact, `area_entered` ne se redéclenche pas.
 	# On scanne donc explicitement les overlaps au début (et pendant la fenêtre active).
@@ -51,13 +66,19 @@ func _end_swing() -> void:
 	_attacker = null
 	_damage = 0
 	_already_hit.clear()
+	if DEBUG_HITS:
+		print_debug("[hits] end_swing", self, "monitoring=", monitoring, "monitorable=", monitorable)
 
 
 func _on_area_entered(area: Area2D) -> void:
+	if DEBUG_HITS:
+		print_debug("[hits] area_entered", self, area)
 	_try_hit_area(area)
 
 
 func _process_overlaps_now() -> void:
+	if DEBUG_HITS:
+		print_debug("[hits] process_overlaps", self, "overlaps=", get_overlapping_areas().size())
 	for area in get_overlapping_areas():
 		if area is Area2D:
 			_try_hit_area(area as Area2D)
@@ -77,11 +98,17 @@ func _try_hit_area(area: Area2D) -> void:
 
 	var target_id: int = target_owner.get_instance_id()
 	if _already_hit.has(target_id):
+		if DEBUG_HITS:
+			print_debug("[hits] skip already_hit", self, target_owner)
 		return
 	if not _can_hit_target(target_owner):
+		if DEBUG_HITS:
+			print_debug("[hits] skip can_hit_target=false", self, target_owner)
 		return
 
 	_already_hit[target_id] = true
+	if DEBUG_HITS:
+		print_debug("[hits] calling receive_hit", self, area, _attacker, _damage, global_position)
 	area.call("receive_hit", _attacker, _damage, global_position)
 	hit_confirmed.emit(target_owner as Node2D, _damage)
 
