@@ -22,3 +22,35 @@ Ces règles s'appliquent à **ce repo uniquement**.
 - Ne pas utiliser de commandes destructives non demandées (ex: `git reset --hard`).
 - Ne pas supprimer de fichiers non suivis sans demande explicite.
 - Ne pas inclure de changements non liés dans le commit/PR.
+  
+---
+
+## CI / Godot / Tests (règles techniques)
+
+Ces règles complètent le workflow Git obligatoire ci-dessus.
+
+### Contraintes CI
+- Ne jamais tenter de lancer l’éditeur Godot interactif.
+- Toute commande Godot doit être compatible headless (CI).
+- Ne pas supposer que Godot est installé hors de la CI GitHub Actions.
+- Ne jamais committer le dossier `.godot/` (cache local).
+
+### Tests & Qualité
+- Toute PR qui modifie le gameplay (combat, hitbox/hurtbox, dégâts, skills, targeting, AI) doit :
+  - ajouter au moins un test GUT pertinent, **ou**
+  - mettre à jour un test existant, **ou**
+  - expliquer clairement pourquoi aucun test n’est applicable.
+- Si une signature de fonction change, les tests associés doivent être mis à jour.
+- Les tests doivent éviter les fuites :
+  - libérer les Nodes créés (`queue_free()`),
+  - ou utiliser les helpers GUT adaptés.
+
+### Commandes CI de référence
+- Import Godot (headless) :
+  - `godot --headless --editor --quit --path .`
+- Tests GUT (headless) :
+  - `godot --headless -s addons/gut/gut_cmdln.gd -gdir=res://tests -ginclude_subdirs -gexit`
+
+### Définition de “Done”
+- Le workflow GitHub Actions `godot-ci` doit être au vert.
+- Les changements gameplay doivent être couverts par au moins un test pertinent.
