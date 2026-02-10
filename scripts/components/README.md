@@ -251,6 +251,7 @@ func take_damage(amount: int, from: Node2D) -> void:
 5. **Contrat équipe recommandé** : les entités ciblables devraient exposer `get_team() -> String` pour filtrer les coups alliés
 6. **Dégâts événementiels** : connecter `HurtboxComponent.hit_received` vers `take_damage` sur l'entité
 7. **Dependencies** : CombatFeedback nécessite le singleton `HitPauseManager` (voir [project.godot](../../project.godot))
+5. **Dependencies** : CombatFeedback nécessite le singleton `HitPauseManager` (voir [project.godot](../../project.godot))
 
 ---
 
