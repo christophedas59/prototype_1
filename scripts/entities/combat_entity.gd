@@ -77,6 +77,24 @@ var current_target: CombatEntity = null
 
 
 # -------------------------------------------------------------------
+# CONTRAT PUBLIC (pour composants/IA externes)
+# -------------------------------------------------------------------
+
+func is_alive() -> bool:
+	"""Contrat explicite : indique si l'entité est vivante."""
+	return not is_dead
+
+
+func get_team() -> String:
+	"""Contrat explicite : expose la faction logique de l'entité."""
+	if is_player or autonomous:
+		return "player"
+	if is_enemy:
+		return "enemy"
+	return "neutral"
+
+
+# -------------------------------------------------------------------
 # CYCLE DE VIE
 # -------------------------------------------------------------------
 

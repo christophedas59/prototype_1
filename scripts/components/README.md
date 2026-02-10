@@ -219,7 +219,8 @@ func take_damage(amount: int, from: Node2D) -> void:
 1. **Initialisation** : Toujours appeler `component.initialize()` dans `_ready()`
 2. **Update** : Appeler `component.update(delta)` dans `_physics_process()` pour les composants qui en ont besoin
 3. **Ordre d'ajout** : Les composants doivent être des enfants de l'entité dans la scène
-4. **Dependencies** : CombatFeedback nécessite le singleton `HitPauseManager` (voir [project.godot](../../project.godot))
+4. **Contrat cible recommandé** : les entités ciblables devraient exposer `is_alive() -> bool` (fallback legacy géré sur `is_dead`)
+5. **Dependencies** : CombatFeedback nécessite le singleton `HitPauseManager` (voir [project.godot](../../project.godot))
 
 ---
 
