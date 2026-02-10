@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://d7nwbidoa28l"]
+[gd_scene load_steps=12 format=3 uid="uid://d7nwbidoa28l"]
 
 [ext_resource type="Script" path="res://scripts/entities/combat_entity.gd" id="1_a4q2m"]
 [ext_resource type="Texture2D" uid="uid://dhp4ijkds4wlg" path="res://assets/sprites/ui/bar/hp_under.png" id="2_rsphg"]
@@ -7,6 +7,17 @@
 [ext_resource type="Script" path="res://scripts/components/health_bar_component.gd" id="5_comp1"]
 [ext_resource type="Script" path="res://scripts/components/targeting_system.gd" id="6_comp2"]
 [ext_resource type="Script" path="res://scripts/components/combat_feedback.gd" id="7_comp3"]
+[ext_resource type="Script" path="res://scripts/components/hurtbox_component.gd" id="8_comp4"]
+[ext_resource type="Script" path="res://scripts/components/melee_hitbox_component.gd" id="9_comp5"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+radius = 8.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hurtbox"]
+radius = 10.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_attack"]
+radius = 20.0
 
 [node name="Fighter" type="CharacterBody2D"]
 script = ExtResource("1_a4q2m")
@@ -14,6 +25,27 @@ script = ExtResource("1_a4q2m")
 [node name="Visual" type="AnimatedSprite2D" parent="."]
 
 [node name="BodyCollision" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_body")
+
+[node name="Hurtbox" type="Area2D" parent="."]
+collision_layer = 8
+collision_mask = 0
+monitoring = true
+monitorable = true
+script = ExtResource("8_comp4")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
+shape = SubResource("CircleShape2D_hurtbox")
+
+[node name="AttackHitbox" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 8
+monitoring = false
+monitorable = false
+script = ExtResource("9_comp5")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackHitbox"]
+shape = SubResource("CircleShape2D_attack")
 
 [node name="HealthBarGhost" type="TextureProgressBar" parent="."]
 z_index = 100
