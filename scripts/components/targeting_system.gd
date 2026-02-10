@@ -117,7 +117,16 @@ func _update_cache() -> void:
 
 
 func _is_target_alive(node: Node) -> bool:
-	"""Considère une cible vivante par défaut, sauf si elle expose is_dead=true."""
+	"""
+	Contrat cible prioritaire:
+	1) méthode is_alive() -> bool
+	2) fallback legacy : propriété is_dead
+	"""
+	if node.has_method("is_alive"):
+		var alive: Variant = node.call("is_alive")
+		if typeof(alive) == TYPE_BOOL:
+			return alive
+
 	var dead_flag: Variant = node.get("is_dead")
 	if typeof(dead_flag) == TYPE_BOOL and dead_flag:
 		return false
