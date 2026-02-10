@@ -120,6 +120,30 @@ feedback_comp.reset()
 
 ---
 
+
+### 4. HurtboxComponent
+
+**Responsabilité** : Point d'entrée des dégâts via événements.
+
+**Fonctionnalités** :
+- Reçoit une attaque via `receive_hit(attacker, amount, hit_position)`
+- Émet `hit_received(attacker, amount, hit_position)`
+- Permet de découpler la détection de collision et l'application des dégâts
+
+---
+
+### 5. MeleeHitboxComponent
+
+**Responsabilité** : Détection d'impact de mêlée pendant une fenêtre d'attaque courte.
+
+**Fonctionnalités** :
+- Activation temporaire de la hitbox via `start_swing(attacker, amount)`
+- Détection des `HurtboxComponent` touchées
+- Anti multi-hit sur la même cible pendant un swing
+- Filtrage d'alliés via `get_team()` si disponible
+
+---
+
 ## 🎯 Exemple d'utilisation : CombatEntity
 
 Voir [scripts/combat_entity.gd](../combat_entity.gd) pour un exemple complet.
@@ -130,6 +154,10 @@ MyEntity (CharacterBody2D)
 ├── Visual (AnimatedSprite2D ou Sprite2D)
 ├── HealthBar (TextureProgressBar)
 ├── HealthBarGhost (TextureProgressBar)
+├── Hurtbox (Area2D)
+│   └── CollisionShape2D
+├── AttackHitbox (Area2D)
+│   └── CollisionShape2D
 ├── HealthBarComponent (Node)
 ├── TargetingSystem (Node)
 └── CombatFeedback (Node)
@@ -220,6 +248,9 @@ func take_damage(amount: int, from: Node2D) -> void:
 2. **Update** : Appeler `component.update(delta)` dans `_physics_process()` pour les composants qui en ont besoin
 3. **Ordre d'ajout** : Les composants doivent être des enfants de l'entité dans la scène
 4. **Contrat cible recommandé** : les entités ciblables devraient exposer `is_alive() -> bool` (fallback legacy géré sur `is_dead`)
+5. **Contrat équipe recommandé** : les entités ciblables devraient exposer `get_team() -> String` pour filtrer les coups alliés
+6. **Dégâts événementiels** : connecter `HurtboxComponent.hit_received` vers `take_damage` sur l'entité
+7. **Dependencies** : CombatFeedback nécessite le singleton `HitPauseManager` (voir [project.godot](../../project.godot))
 5. **Dependencies** : CombatFeedback nécessite le singleton `HitPauseManager` (voir [project.godot](../../project.godot))
 
 ---
