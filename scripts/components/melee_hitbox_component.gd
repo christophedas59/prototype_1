@@ -38,7 +38,9 @@ func start_swing(attacker: Node2D, amount: int) -> void:
 	_process_overlaps_now()
 	call_deferred("_process_overlaps_now")
 
-	var timer := get_tree().create_timer(active_time)
+	# Ignore le time_scale global (hit-pause), sinon la fenêtre active
+	# peut durer beaucoup trop longtemps et bloquer les swings suivants.
+	var timer := get_tree().create_timer(active_time, true, true)
 	timer.timeout.connect(_end_swing)
 
 
