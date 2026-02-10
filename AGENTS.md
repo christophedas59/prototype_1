@@ -4,6 +4,13 @@ Ces règles s'appliquent à **ce repo uniquement**.
 
 ## Workflow Git obligatoire
 
+### Précondition (avant toute modification)
+- Avant de modifier quoi que ce soit :
+  - mettre la branche locale à jour depuis `origin/main`
+    - via `git pull --rebase` **ou**
+    - via `git merge origin/main`,
+  - vérifier que la branche de travail part bien du dernier `main`.
+
 ### Quand l'utilisateur demande de "push" (ou équivalent)
 1. Créer une nouvelle branche depuis `main`.
 2. Ajouter et commit les changements avec un message de commit clair.
