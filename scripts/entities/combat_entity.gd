@@ -23,6 +23,8 @@ class_name CombatEntity
 @onready var health_bar_comp: HealthBarComponent = $HealthBarComponent
 @onready var targeting_comp: TargetingSystem = $TargetingSystem
 @onready var feedback_comp: CombatFeedback = $CombatFeedback
+@onready var hurtbox_comp: HurtboxComponent = $Hurtbox
+@onready var melee_hitbox_comp: MeleeHitboxComponent = $AttackHitbox
 
 
 # -------------------------------------------------------------------
@@ -77,6 +79,24 @@ var current_target: CombatEntity = null
 
 
 # -------------------------------------------------------------------
+# CONTRAT PUBLIC (pour composants/IA externes)
+# -------------------------------------------------------------------
+
+func is_alive() -> bool:
+	"""Contrat explicite : indique si l'entité est vivante."""
+	return not is_dead
+
+
+func get_team() -> String:
+	"""Contrat explicite : expose la faction logique de l'entité."""
+	if is_player or autonomous:
+		return "player"
+	if is_enemy:
+		return "enemy"
+	return "neutral"
+
+
+# -------------------------------------------------------------------
 # CYCLE DE VIE
 # -------------------------------------------------------------------
 
@@ -94,6 +114,9 @@ func _ready() -> void:
 	# Connect l'animation finished
 	if not visual.animation_finished.is_connected(_on_animation_finished):
 		visual.animation_finished.connect(_on_animation_finished)
+
+	if not hurtbox_comp.hit_received.is_connected(_on_hurtbox_hit_received):
+		hurtbox_comp.hit_received.connect(_on_hurtbox_hit_received)
 
 
 func _physics_process(delta: float) -> void:
@@ -241,8 +264,8 @@ func try_attack(target: CombatEntity) -> void:
 
 	play_attack_animation()
 
-	# Dégâts sans hitbox (proto)
-	target.take_damage(attack_damage, self)
+	# Déclenche la hitbox de mêlée (détection via hurtbox + événements)
+	melee_hitbox_comp.start_swing(self, attack_damage)
 
 
 func play_attack_animation() -> void:
@@ -278,6 +301,11 @@ func _on_animation_finished() -> void:
 				queue_free()
 		)
 
+
+
+
+func _on_hurtbox_hit_received(attacker: Node2D, amount: int, _hit_position: Vector2) -> void:
+	take_damage(amount, attacker)
 
 func take_damage(amount: int, from: Node2D = null) -> void:
 	if is_dead or feedback_comp.is_invulnerable():
@@ -316,6 +344,11 @@ func die() -> void:
 	# Désactive collision
 	if is_instance_valid(body_collision):
 		body_collision.disabled = true
+
+	if is_instance_valid(hurtbox_comp):
+		hurtbox_comp.monitoring = false
+	if is_instance_valid(melee_hitbox_comp):
+		melee_hitbox_comp.monitoring = false
 
 	# Anim death
 	var frames := visual.sprite_frames
