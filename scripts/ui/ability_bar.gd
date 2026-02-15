@@ -33,12 +33,32 @@ func _cache_slots() -> void:
 	_slots.clear()
 
 	for index in SLOT_COUNT:
-		var slot_root: Control = get_node("Root/Slots/Slot%d" % index)
-		var button: TextureButton = slot_root.get_node("Button")
-		var cooldown_label: Label = button.get_node("Cooldown")
-		var key_label: Label = slot_root.get_node("Key")
-		var cooldown_overlay: TextureProgressBar = button.get_node("CooldownOverlay")
-		var glow: Panel = button.get_node("Glow")
+		var slot_root: Control = get_node_or_null("Root/Slots/Slot%d" % index)
+		if slot_root == null:
+			push_error("AbilityBar: slot root manquant pour le slot %d (Root/Slots/Slot%d)." % [index, index])
+			continue
+
+		var button: TextureButton = slot_root.get_node_or_null("Button")
+		var cooldown_label: Label = slot_root.get_node_or_null("Button/Cooldown")
+		var key_label: Label = slot_root.get_node_or_null("Key")
+		var cooldown_overlay: TextureProgressBar = slot_root.get_node_or_null("Button/CooldownOverlay")
+		var glow: Panel = slot_root.get_node_or_null("Button/Glow")
+
+		var missing_nodes: Array[String] = []
+		if button == null:
+			missing_nodes.append("Button")
+		if cooldown_label == null:
+			missing_nodes.append("Cooldown")
+		if cooldown_overlay == null:
+			missing_nodes.append("CooldownOverlay")
+		if glow == null:
+			missing_nodes.append("Glow")
+		if key_label == null:
+			missing_nodes.append("Key")
+
+		if not missing_nodes.is_empty():
+			push_error("AbilityBar: noeud(s) critique(s) manquant(s) pour le slot %d: %s." % [index, ", ".join(missing_nodes)])
+			continue
 
 		button.texture_normal = ICONS[index]
 		button.texture_pressed = ICONS[index]
@@ -72,7 +92,11 @@ func _refresh_ability_system_reference() -> void:
 	if is_instance_valid(_ability_system):
 		return
 
-	_ability_system = get_tree().current_scene.find_child("AbilitySystem", true, false)
+	var current_scene := get_tree().current_scene
+	if is_instance_valid(current_scene):
+		_ability_system = current_scene.find_child("AbilitySystem", true, false)
+	else:
+		_ability_system = null
 
 
 func _on_slot_pressed(slot_index: int) -> void:
@@ -89,6 +113,10 @@ func _on_slot_pressed(slot_index: int) -> void:
 func _update_slot_states() -> void:
 	for index in _slots.size():
 		var slot: Dictionary = _slots[index]
+		if not _is_slot_valid(slot):
+			push_warning("AbilityBar: slot %d invalide détecté dans _slots, entrée ignorée." % index)
+			continue
+
 		var remaining := _get_cooldown_remaining(index)
 		var duration := _get_cooldown_duration(index)
 		var has_cooldown := remaining > 0.0
@@ -110,6 +138,19 @@ func _update_slot_states() -> void:
 			cooldown_overlay.value = 0.0
 
 		glow.visible = _is_targeting() and _get_targeting_slot_index() == index
+
+
+func _is_slot_valid(slot: Dictionary) -> bool:
+	return (
+		slot.has("button")
+		and slot.has("cooldown")
+		and slot.has("overlay")
+		and slot.has("glow")
+		and slot["button"] != null
+		and slot["cooldown"] != null
+		and slot["overlay"] != null
+		and slot["glow"] != null
+	)
 
 
 func _format_cooldown(seconds: float) -> String:
