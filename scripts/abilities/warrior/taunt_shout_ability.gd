@@ -1,6 +1,6 @@
 extends "res://scripts/abilities/warrior/warrior_ability_base.gd"
 
-const TAUNT_DURATION := 4.0
+var taunt_duration: float = 4.0
 
 func _init() -> void:
 	name = "Taunt Shout"
@@ -26,10 +26,10 @@ func _cast(caster: CombatEntity, cast_context: Dictionary) -> bool:
 			continue
 
 		if target.has_method("apply_forced_target"):
-			target.apply_forced_target(caster, TAUNT_DURATION)
+			target.apply_forced_target(caster, taunt_duration)
 		else:
 			target.set_meta("taunted_by", caster)
-			target.set_meta("taunted_until_msec", Time.get_ticks_msec() + int(TAUNT_DURATION * 1000.0))
+			target.set_meta("taunted_until_msec", Time.get_ticks_msec() + int(taunt_duration * 1000.0))
 		target.feedback_comp.apply_flash()
 		affected += 1
 

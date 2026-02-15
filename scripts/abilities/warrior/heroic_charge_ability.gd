@@ -1,7 +1,7 @@
 extends "res://scripts/abilities/warrior/warrior_ability_base.gd"
 
-const DAMAGE_RATIO := 1.2
-const STUN_DURATION := 0.4
+var damage_ratio: float = 1.2
+var stun_duration: float = 0.4
 
 func _init() -> void:
 	name = "Heroic Charge"
@@ -21,8 +21,8 @@ func _cast(caster: CombatEntity, cast_context: Dictionary) -> bool:
 	var target := _find_first_collision_target(caster, cast_context, direction)
 	if target != null:
 		endpoint = target.global_position
-		_apply_damage(caster, target, DAMAGE_RATIO)
-		_apply_stun(target, STUN_DURATION)
+		_apply_damage(caster, target, damage_ratio)
+		_apply_stun(target, stun_duration)
 
 	caster.global_position = endpoint
 	return true

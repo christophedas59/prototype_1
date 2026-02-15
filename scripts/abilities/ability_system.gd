@@ -24,6 +24,30 @@ signal targeting_cancelled
 @export var preview_controller_path: NodePath
 @export var default_target_group: StringName = &"enemy"
 
+@export_group("Warrior / Shield Slam")
+@export_range(0.0, 60.0, 0.1, "suffix:s") var shield_slam_cooldown: float = 10.0
+@export_range(0.0, 20.0, 0.1, "suffix:units") var shield_slam_range_units: float = 1.6
+@export_range(0.0, 10.0, 0.05) var shield_slam_damage_ratio: float = 0.8
+@export_range(0.0, 10.0, 0.1, "suffix:s") var shield_slam_stun_duration: float = 1.2
+@export_range(0.0, 1.0, 0.01, "suffix:s") var shield_slam_hit_pause_duration: float = 0.06
+@export_range(0.0, 1.0, 0.01) var shield_slam_hit_pause_scale: float = 0.25
+
+@export_group("Warrior / Whirl Slash")
+@export_range(0.0, 60.0, 0.1, "suffix:s") var whirl_slash_cooldown: float = 12.0
+@export_range(0.0, 20.0, 0.1, "suffix:units") var whirl_slash_radius_units: float = 2.6
+@export_range(0.0, 10.0, 0.05) var whirl_slash_damage_ratio: float = 0.6
+
+@export_group("Warrior / Heroic Charge")
+@export_range(0.0, 60.0, 0.1, "suffix:s") var heroic_charge_cooldown: float = 15.0
+@export_range(0.0, 20.0, 0.1, "suffix:units") var heroic_charge_max_distance_units: float = 5.5
+@export_range(0.0, 10.0, 0.05) var heroic_charge_damage_ratio: float = 1.2
+@export_range(0.0, 10.0, 0.1, "suffix:s") var heroic_charge_stun_duration: float = 0.4
+
+@export_group("Warrior / Taunt Shout")
+@export_range(0.0, 60.0, 0.1, "suffix:s") var taunt_shout_cooldown: float = 20.0
+@export_range(0.0, 20.0, 0.1, "suffix:units") var taunt_shout_radius_units: float = 5.0
+@export_range(0.0, 10.0, 0.1, "suffix:s") var taunt_shout_duration: float = 4.0
+
 var _mode: TargetingMode = TargetingMode.NONE
 var _targeting_max_distance: float = 0.0
 var _caster: Node2D = null
@@ -55,6 +79,7 @@ func _ready() -> void:
 			TauntShoutAbilityScript.new(),
 		]
 
+	_apply_warrior_ability_exports()
 	set_process(true)
 
 
@@ -62,6 +87,39 @@ func _process(delta: float) -> void:
 	for ability in ability_slots:
 		if ability != null and ability.has_method("update_cooldown"):
 			ability.update_cooldown(delta)
+
+
+func _apply_warrior_ability_exports() -> void:
+	if ability_slots.size() < 4:
+		return
+
+	var shield_slam = ability_slots[0]
+	if shield_slam != null:
+		shield_slam.cooldown = shield_slam_cooldown
+		shield_slam.cast_range = shield_slam_range_units * shield_slam.WORLD_UNIT_TO_PIXELS
+		shield_slam.damage_ratio = shield_slam_damage_ratio
+		shield_slam.stun_duration = shield_slam_stun_duration
+		shield_slam.hit_pause_duration = shield_slam_hit_pause_duration
+		shield_slam.hit_pause_scale = shield_slam_hit_pause_scale
+
+	var whirl_slash = ability_slots[1]
+	if whirl_slash != null:
+		whirl_slash.cooldown = whirl_slash_cooldown
+		whirl_slash.radius = whirl_slash_radius_units * whirl_slash.WORLD_UNIT_TO_PIXELS
+		whirl_slash.damage_ratio = whirl_slash_damage_ratio
+
+	var heroic_charge = ability_slots[2]
+	if heroic_charge != null:
+		heroic_charge.cooldown = heroic_charge_cooldown
+		heroic_charge.max_distance = heroic_charge_max_distance_units * heroic_charge.WORLD_UNIT_TO_PIXELS
+		heroic_charge.damage_ratio = heroic_charge_damage_ratio
+		heroic_charge.stun_duration = heroic_charge_stun_duration
+
+	var taunt_shout = ability_slots[3]
+	if taunt_shout != null:
+		taunt_shout.cooldown = taunt_shout_cooldown
+		taunt_shout.radius = taunt_shout_radius_units * taunt_shout.WORLD_UNIT_TO_PIXELS
+		taunt_shout.taunt_duration = taunt_shout_duration
 
 
 func request_cast(slot_index: int) -> bool:

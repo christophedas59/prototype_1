@@ -42,3 +42,26 @@ func test_cancel_targeting_releases_control_lock() -> void:
 
 	ability.cancel_targeting()
 	assert_false(entity.ability_control_locked, "Annuler le targeting doit rendre la main à l'autobattler")
+
+
+func test_exported_warrior_parameters_are_applied_to_ability_slots() -> void:
+	var entity: CombatEntity = CombatEntityScene.instantiate()
+	var ability_system := entity.get_node("AbilitySystem")
+	ability_system.shield_slam_cooldown = 7.5
+	ability_system.shield_slam_range_units = 2.1
+	ability_system.shield_slam_damage_ratio = 1.4
+	ability_system.whirl_slash_radius_units = 3.4
+	ability_system.heroic_charge_max_distance_units = 6.2
+	ability_system.taunt_shout_duration = 5.8
+	add_child_autofree(entity)
+
+	await get_tree().process_frame
+
+	var slots: Array = ability_system.ability_slots
+	assert_eq(slots.size(), 4, "Les 4 abilities warrior doivent être chargées")
+	assert_eq(slots[0].cooldown, 7.5)
+	assert_eq(slots[0].cast_range, 42.0)
+	assert_eq(slots[0].damage_ratio, 1.4)
+	assert_eq(slots[1].radius, 68.0)
+	assert_eq(slots[2].max_distance, 124.0)
+	assert_eq(slots[3].taunt_duration, 5.8)

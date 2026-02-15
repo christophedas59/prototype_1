@@ -1,6 +1,6 @@
 extends "res://scripts/abilities/warrior/warrior_ability_base.gd"
 
-const DAMAGE_RATIO := 0.6
+var damage_ratio: float = 0.6
 
 func _init() -> void:
 	name = "Whirl Slash"
@@ -25,7 +25,7 @@ func _cast(caster: CombatEntity, cast_context: Dictionary) -> bool:
 		if caster.global_position.distance_to(target.global_position) > radius:
 			continue
 
-		if _apply_damage(caster, target, DAMAGE_RATIO):
+		if _apply_damage(caster, target, damage_ratio):
 			hit_count += 1
 
 	return hit_count > 0
