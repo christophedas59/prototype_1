@@ -48,6 +48,7 @@ const DEBUG_HITS := false
 
 # Vie
 @export var max_hp: int = 10
+@export var health_bar_style: HealthBarComponent.HealthBarStyle = HealthBarComponent.HealthBarStyle.ENEMY
 
 # Ciblage (legacy, peu utilisé maintenant)
 @export var retarget_distance_bonus: float = 16.0
@@ -162,6 +163,7 @@ func _physics_process(delta: float) -> void:
 
 func _initialize_components() -> void:
 	# HealthBarComponent
+	health_bar_comp.health_bar_style = health_bar_style
 	health_bar_comp.initialize(health_bar, health_bar_ghost, max_hp, hp)
 
 	# TargetingSystem
