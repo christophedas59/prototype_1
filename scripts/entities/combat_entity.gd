@@ -79,6 +79,9 @@ var is_attacking: bool = false
 var is_dead: bool = false
 
 var current_target: CombatEntity = null
+var forced_target: CombatEntity = null
+var taunt_timer: float = 0.0
+var stun_timer: float = 0.0
 
 
 # -------------------------------------------------------------------
@@ -126,12 +129,20 @@ func _physics_process(delta: float) -> void:
 	if is_dead:
 		return
 
+	_update_control_effects(delta)
+
 	# Update composants
 	targeting_comp.update(delta)
 	feedback_comp.update(delta)
 
 	# Timers
 	attack_timer = max(attack_timer - delta, 0.0)
+
+	if is_stunned():
+		velocity = Vector2.ZERO
+		move_and_slide()
+		update_animation()
+		return
 
 	# Logique de déplacement / IA
 	if is_player:
@@ -201,7 +212,7 @@ func player_move() -> void:
 func autonomous_move_and_fight() -> void:
 	# Garde la cible tant qu'elle est vivante
 	if not targeting_comp.is_target_valid(current_target):
-		current_target = _as_combat_entity(targeting_comp.get_closest_target())
+		current_target = _get_priority_target()
 
 	if current_target == null:
 		velocity = Vector2.ZERO
@@ -226,7 +237,7 @@ func enemy_move() -> void:
 		velocity = Vector2.ZERO
 		return
 
-	var target := _as_combat_entity(targeting_comp.get_closest_target())
+	var target := _get_priority_target()
 	if target == null:
 		velocity = Vector2.ZERO
 		return
@@ -258,7 +269,7 @@ func _as_combat_entity(target: Node2D) -> CombatEntity:
 # -------------------------------------------------------------------
 
 func try_attack(target: CombatEntity) -> void:
-	if is_dead or is_attacking or attack_timer > 0.0 or target == null:
+	if is_dead or is_stunned() or is_attacking or attack_timer > 0.0 or target == null:
 		return
 	if not _is_target_in_attack_range(target):
 		return
@@ -297,6 +308,37 @@ func _is_target_in_attack_range(target: CombatEntity) -> bool:
 
 	var dist := global_position.distance_to(target.global_position)
 	return dist <= _get_attack_trigger_range(target)
+
+
+func _get_priority_target() -> CombatEntity:
+	if targeting_comp.is_target_valid(forced_target):
+		return forced_target
+	return _as_combat_entity(targeting_comp.get_closest_target())
+
+
+func apply_taunt(target: CombatEntity, duration: float) -> void:
+	forced_target = target
+	taunt_timer = max(duration, 0.0)
+
+
+func apply_stun(duration: float) -> void:
+	stun_timer = max(duration, 0.0)
+	is_attacking = false
+	velocity = Vector2.ZERO
+
+
+func is_stunned() -> bool:
+	return stun_timer > 0.0
+
+
+func _update_control_effects(delta: float) -> void:
+	if taunt_timer > 0.0:
+		taunt_timer = max(taunt_timer - delta, 0.0)
+		if taunt_timer <= 0.0:
+			forced_target = null
+
+	if stun_timer > 0.0:
+		stun_timer = max(stun_timer - delta, 0.0)
 
 
 func _get_attack_trigger_range(target: CombatEntity) -> float:
