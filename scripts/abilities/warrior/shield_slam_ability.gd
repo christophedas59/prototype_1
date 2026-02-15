@@ -10,14 +10,14 @@ func _init() -> void:
 	icon_path = "res://assets/sprites/ui/icons/abilities/warrior/shield_slam.png"
 	cooldown = 10.0
 	targeting_type = TargetingType.TARGETED
-	range = 1.6 * WORLD_UNIT_TO_PIXELS
+	cast_range = 1.6 * WORLD_UNIT_TO_PIXELS
 
 
 func _cast(caster: CombatEntity, cast_context: Dictionary) -> bool:
 	var target: CombatEntity = cast_context.get("target")
 	if target == null or not target.is_alive():
 		return false
-	if caster.global_position.distance_to(target.global_position) > range:
+	if caster.global_position.distance_to(target.global_position) > cast_range:
 		return false
 
 	if not _apply_damage(caster, target, DAMAGE_RATIO):

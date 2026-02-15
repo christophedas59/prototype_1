@@ -86,13 +86,12 @@ func request_cast(slot_index: int) -> bool:
 
 	state = AbilityState.TARGETING
 	if targeting_type == 0:
-		begin_targeted(float(ability.range), default_target_group)
+		begin_targeted(float(ability.cast_range), default_target_group)
 	else:
 		begin_directional(float(ability.max_distance))
 
 	return true
 
-	return true
 
 func confirm_target(selection: Dictionary = {}) -> bool:
 	if active_slot_index < 0 or active_slot_index >= ability_slots.size():
