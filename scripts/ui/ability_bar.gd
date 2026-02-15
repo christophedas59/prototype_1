@@ -35,10 +35,10 @@ func _cache_slots() -> void:
 	for index in SLOT_COUNT:
 		var slot_root: Control = get_node("Root/Slots/Slot%d" % index)
 		var button: TextureButton = slot_root.get_node("Button")
-		var cooldown_label: Label = slot_root.get_node("Cooldown")
+		var cooldown_label: Label = button.get_node("Cooldown")
 		var key_label: Label = slot_root.get_node("Key")
-		var cooldown_overlay: TextureProgressBar = slot_root.get_node("CooldownOverlay")
-		var glow: Panel = slot_root.get_node("Glow")
+		var cooldown_overlay: TextureProgressBar = button.get_node("CooldownOverlay")
+		var glow: Panel = button.get_node("Glow")
 
 		button.texture_normal = ICONS[index]
 		button.texture_pressed = ICONS[index]
