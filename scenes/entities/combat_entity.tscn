@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://d7nwbidoa28l"]
+[gd_scene load_steps=14 format=3 uid="uid://d7nwbidoa28l"]
 
 [ext_resource type="Script" uid="uid://bidfrnm8240su" path="res://scripts/entities/combat_entity.gd" id="1_a4q2m"]
 [ext_resource type="Texture2D" uid="uid://dhp4ijkds4wlg" path="res://assets/sprites/ui/bar/hp_under.png" id="2_rsphg"]
@@ -9,6 +9,7 @@
 [ext_resource type="Script" uid="uid://cmmu0pmyijpyv" path="res://scripts/components/combat_feedback.gd" id="7_comp3"]
 [ext_resource type="Script" uid="uid://i7o6plkv1j4" path="res://scripts/components/hurtbox_component.gd" id="8_comp4"]
 [ext_resource type="Script" uid="uid://22ksym7qh1ub" path="res://scripts/components/melee_hitbox_component.gd" id="9_comp5"]
+[ext_resource type="Script" path="res://scripts/abilities/ability_system.gd" id="10_ability"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_body"]
 radius = 8.0
@@ -78,3 +79,6 @@ script = ExtResource("6_comp2")
 
 [node name="CombatFeedback" type="Node" parent="."]
 script = ExtResource("7_comp3")
+
+[node name="AbilitySystem" type="Node" parent="."]
+script = ExtResource("10_ability")
