@@ -1,9 +1,9 @@
 extends "res://scripts/abilities/warrior/warrior_ability_base.gd"
 
-const DAMAGE_RATIO := 0.8
-const STUN_DURATION := 1.2
-const HIT_PAUSE_DURATION := 0.06
-const HIT_PAUSE_SCALE := 0.25
+var damage_ratio: float = 0.8
+var stun_duration: float = 1.2
+var hit_pause_duration: float = 0.06
+var hit_pause_scale: float = 0.25
 
 func _init() -> void:
 	name = "Shield Slam"
@@ -20,9 +20,9 @@ func _cast(caster: CombatEntity, cast_context: Dictionary) -> bool:
 	if caster.global_position.distance_to(target.global_position) > cast_range:
 		return false
 
-	if not _apply_damage(caster, target, DAMAGE_RATIO):
+	if not _apply_damage(caster, target, damage_ratio):
 		return false
 
-	_apply_stun(target, STUN_DURATION)
-	_request_hit_pause(HIT_PAUSE_DURATION, HIT_PAUSE_SCALE)
+	_apply_stun(target, stun_duration)
+	_request_hit_pause(hit_pause_duration, hit_pause_scale)
 	return true
