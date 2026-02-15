@@ -92,6 +92,7 @@ func request_cast(slot_index: int) -> bool:
 
 	return true
 
+	return true
 
 func confirm_target(selection: Dictionary = {}) -> bool:
 	if active_slot_index < 0 or active_slot_index >= ability_slots.size():
@@ -267,6 +268,16 @@ func _unhandled_input(event: InputEvent) -> void:
 			cancel_targeting()
 			get_viewport().set_input_as_handled()
 			return
+
+	if state == AbilityState.AUTO:
+		if event.is_action_pressed("ability_1"):
+			request_cast(0)
+		elif event.is_action_pressed("ability_2"):
+			request_cast(1)
+		elif event.is_action_pressed("ability_3"):
+			request_cast(2)
+		elif event.is_action_pressed("ability_4"):
+			request_cast(3)
 
 	if state == AbilityState.AUTO:
 		if event.is_action_pressed("ability_1"):
