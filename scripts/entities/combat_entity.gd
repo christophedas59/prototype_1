@@ -25,6 +25,7 @@ class_name CombatEntity
 @onready var feedback_comp: CombatFeedback = $CombatFeedback
 @onready var hurtbox_comp: HurtboxComponent = $Hurtbox
 @onready var melee_hitbox_comp: MeleeHitboxComponent = $AttackHitbox
+@onready var ability_system: AbilitySystem = get_node_or_null("AbilitySystem")
 
 const DEBUG_HITS := false
 
@@ -77,6 +78,7 @@ var facing: String = "down"
 var attack_timer: float = 0.0
 var is_attacking: bool = false
 var is_dead: bool = false
+var ability_control_locked: bool = false
 
 var current_target: CombatEntity = null
 
@@ -199,6 +201,10 @@ func player_move() -> void:
 
 
 func autonomous_move_and_fight() -> void:
+	if ability_control_locked:
+		velocity = Vector2.ZERO
+		return
+
 	# Garde la cible tant qu'elle est vivante
 	if not targeting_comp.is_target_valid(current_target):
 		current_target = _as_combat_entity(targeting_comp.get_closest_target())
@@ -258,7 +264,7 @@ func _as_combat_entity(target: Node2D) -> CombatEntity:
 # -------------------------------------------------------------------
 
 func try_attack(target: CombatEntity) -> void:
-	if is_dead or is_attacking or attack_timer > 0.0 or target == null:
+	if ability_control_locked or is_dead or is_attacking or attack_timer > 0.0 or target == null:
 		return
 	if not _is_target_in_attack_range(target):
 		return
@@ -288,6 +294,12 @@ func try_attack(target: CombatEntity) -> void:
 			"hurtbox monitoring=", target.hurtbox_comp.monitoring
 		)
 	melee_hitbox_comp.start_swing(self, attack_damage)
+
+
+func set_ability_control_locked(is_locked: bool) -> void:
+	ability_control_locked = is_locked
+	if ability_control_locked:
+		velocity = Vector2.ZERO
 
 
 
