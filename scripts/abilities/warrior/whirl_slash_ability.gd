@@ -1,12 +1,11 @@
-extends WarriorAbilityBase
-class_name WhirlSlashAbility
+extends "res://scripts/abilities/warrior/warrior_ability_base.gd"
 
 const DAMAGE_RATIO := 0.6
 
 func _init() -> void:
 	name = "Whirl Slash"
-	icon_path = "res://assets/sprites/ui/components/icons/ui_icon_lightning.png"
-	cooldown = 6.0
+	icon_path = "res://assets/sprites/ui/icons/abilities/warrior/whirl_slash.png"
+	cooldown = 12.0
 	targeting_type = TargetingType.INSTANT_AOE
 	radius = 2.6 * WORLD_UNIT_TO_PIXELS
 

@@ -1,13 +1,13 @@
 extends GutTest
 
-const AbilitySystem := preload("res://scripts/abilities/ability_system.gd")
-const TargetingPreviewController := preload("res://scripts/abilities/targeting_preview_controller.gd")
+const AbilitySystemScript := preload("res://scripts/abilities/ability_system.gd")
+const TargetingPreviewControllerScript := preload("res://scripts/abilities/targeting_preview_controller.gd")
 
 
 func test_targeted_confirm_emits_selected_enemy_and_cleans_preview() -> void:
 	var rig := _build_targeting_rig()
-	var ability: AbilitySystem = rig["ability"]
-	var preview: TargetingPreviewController = rig["preview"]
+	var ability = rig["ability"]
+	var preview = rig["preview"]
 	var enemy: Node2D = rig["enemy"]
 
 	watch_signals(ability)
@@ -27,8 +27,8 @@ func test_targeted_confirm_emits_selected_enemy_and_cleans_preview() -> void:
 
 func test_unhandled_input_cancel_on_right_click_resets_targeting_state() -> void:
 	var rig := _build_targeting_rig()
-	var ability: AbilitySystem = rig["ability"]
-	var preview: TargetingPreviewController = rig["preview"]
+	var ability = rig["ability"]
+	var preview = rig["preview"]
 	var enemy: Node2D = rig["enemy"]
 
 	watch_signals(ability)
@@ -62,11 +62,11 @@ func _build_targeting_rig() -> Dictionary:
 	enemy.add_to_group("enemy")
 	root.add_child(enemy)
 
-	var preview := TargetingPreviewController.new()
+	var preview = TargetingPreviewControllerScript.new()
 	preview.name = "TargetingPreviewController"
 	root.add_child(preview)
 
-	var ability := AbilitySystem.new()
+	var ability = AbilitySystemScript.new()
 	ability.caster_path = NodePath("../Caster")
 	ability.preview_controller_path = NodePath("../TargetingPreviewController")
 	root.add_child(ability)

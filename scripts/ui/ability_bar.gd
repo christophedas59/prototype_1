@@ -8,7 +8,7 @@ const ICONS: Array[Texture2D] = [
 	preload("res://assets/sprites/ui/icons/abilities/warrior/taunt_shout.png")
 ]
 
-const KEY_LABELS := ["1", "2", "3", "4"]
+const KEY_LABELS := ["A", "Z", "E", "R"]
 const SLOT_COUNT := 4
 const COOLDOWN_OVERLAY_ALPHA := 0.6
 
