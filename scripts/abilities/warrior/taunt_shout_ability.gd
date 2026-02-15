@@ -1,12 +1,11 @@
-extends WarriorAbilityBase
-class_name TauntShoutAbility
+extends "res://scripts/abilities/warrior/warrior_ability_base.gd"
 
 const TAUNT_DURATION := 4.0
 
 func _init() -> void:
 	name = "Taunt Shout"
-	icon_path = "res://assets/sprites/ui/components/icons/ui_icon_speaker.png"
-	cooldown = 10.0
+	icon_path = "res://assets/sprites/ui/icons/abilities/warrior/taunt_shout.png"
+	cooldown = 20.0
 	targeting_type = TargetingType.INSTANT_AOE
 	radius = 5.0 * WORLD_UNIT_TO_PIXELS
 
@@ -26,8 +25,11 @@ func _cast(caster: CombatEntity, cast_context: Dictionary) -> bool:
 		if caster.global_position.distance_to(target.global_position) > radius:
 			continue
 
-		target.set_meta("taunted_by", caster)
-		target.set_meta("taunted_until_msec", Time.get_ticks_msec() + int(TAUNT_DURATION * 1000.0))
+		if target.has_method("apply_forced_target"):
+			target.apply_forced_target(caster, TAUNT_DURATION)
+		else:
+			target.set_meta("taunted_by", caster)
+			target.set_meta("taunted_until_msec", Time.get_ticks_msec() + int(TAUNT_DURATION * 1000.0))
 		target.feedback_comp.apply_flash()
 		affected += 1
 

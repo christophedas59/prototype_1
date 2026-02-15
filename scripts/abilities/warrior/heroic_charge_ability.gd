@@ -1,13 +1,12 @@
-extends WarriorAbilityBase
-class_name HeroicChargeAbility
+extends "res://scripts/abilities/warrior/warrior_ability_base.gd"
 
 const DAMAGE_RATIO := 1.2
 const STUN_DURATION := 0.4
 
 func _init() -> void:
 	name = "Heroic Charge"
-	icon_path = "res://assets/sprites/ui/components/icons/ui_icon_skull.png"
-	cooldown = 8.0
+	icon_path = "res://assets/sprites/ui/icons/abilities/warrior/heroic_charge.png"
+	cooldown = 15.0
 	targeting_type = TargetingType.DIRECTIONAL
 	max_distance = 5.5 * WORLD_UNIT_TO_PIXELS
 

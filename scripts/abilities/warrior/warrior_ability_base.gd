@@ -1,5 +1,4 @@
 extends RefCounted
-class_name WarriorAbilityBase
 
 ## Convention partagée pour les capacités Warrior.
 ## - Cooldown démarre uniquement à la validation du cast.

@@ -25,7 +25,7 @@ class_name CombatEntity
 @onready var feedback_comp: CombatFeedback = $CombatFeedback
 @onready var hurtbox_comp: HurtboxComponent = $Hurtbox
 @onready var melee_hitbox_comp: MeleeHitboxComponent = $AttackHitbox
-@onready var ability_system: AbilitySystem = get_node_or_null("AbilitySystem")
+@onready var ability_system: Node = get_node_or_null("AbilitySystem")
 
 const DEBUG_HITS := false
 
@@ -79,6 +79,9 @@ var attack_timer: float = 0.0
 var is_attacking: bool = false
 var is_dead: bool = false
 var ability_control_locked: bool = false
+var stun_remaining: float = 0.0
+var forced_target: CombatEntity = null
+var forced_target_remaining: float = 0.0
 
 var current_target: CombatEntity = null
 
@@ -134,6 +137,16 @@ func _physics_process(delta: float) -> void:
 
 	# Timers
 	attack_timer = max(attack_timer - delta, 0.0)
+	stun_remaining = max(stun_remaining - delta, 0.0)
+	forced_target_remaining = max(forced_target_remaining - delta, 0.0)
+	if forced_target_remaining <= 0.0:
+		forced_target = null
+
+	if stun_remaining > 0.0:
+		velocity = Vector2.ZERO
+		move_and_slide()
+		update_animation()
+		return
 
 	# Logique de déplacement / IA
 	if is_player:
@@ -232,7 +245,7 @@ func enemy_move() -> void:
 		velocity = Vector2.ZERO
 		return
 
-	var target := _as_combat_entity(targeting_comp.get_closest_target())
+	var target := forced_target if targeting_comp.is_target_valid(forced_target) else _as_combat_entity(targeting_comp.get_closest_target())
 	if target == null:
 		velocity = Vector2.ZERO
 		return
@@ -294,6 +307,20 @@ func try_attack(target: CombatEntity) -> void:
 			"hurtbox monitoring=", target.hurtbox_comp.monitoring
 		)
 	melee_hitbox_comp.start_swing(self, attack_damage)
+
+
+
+
+func apply_temporary_stun(duration: float) -> void:
+	stun_remaining = max(stun_remaining, duration)
+	velocity = Vector2.ZERO
+
+
+func apply_forced_target(target: CombatEntity, duration: float) -> void:
+	if target == null:
+		return
+	forced_target = target
+	forced_target_remaining = max(forced_target_remaining, duration)
 
 
 func set_ability_control_locked(is_locked: bool) -> void:
