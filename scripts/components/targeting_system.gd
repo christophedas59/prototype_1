@@ -55,10 +55,13 @@ func update(delta: float) -> void:
 # API PUBLIQUE
 # -------------------------------------------------------------------
 
-func get_closest_target() -> Node2D:
+func get_closest_target(preferred_target: Node2D = null) -> Node2D:
 	"""Trouve la cible la plus proche en utilisant le cache"""
 	if not is_instance_valid(_owner_node):
 		return null
+
+	if _is_preferred_target_valid(preferred_target):
+		return preferred_target
 
 	var best: Node2D = null
 	var best_dist_sq: float = INF
@@ -85,6 +88,16 @@ func get_closest_target() -> Node2D:
 			best = node
 
 	return best
+
+
+func _is_preferred_target_valid(preferred_target: Node2D) -> bool:
+	if preferred_target == null:
+		return false
+	if not is_target_valid(preferred_target):
+		return false
+	if target_group == "":
+		return true
+	return preferred_target.is_in_group(target_group)
 
 
 func is_target_valid(target: Node2D) -> bool:
