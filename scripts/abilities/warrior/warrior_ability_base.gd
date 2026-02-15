@@ -18,7 +18,7 @@ var cooldown: float = 0.0
 var targeting_type: TargetingType = TargetingType.TARGETED
 
 # Distances exprimées en pixels pour le pipeline runtime.
-var range: float = 0.0
+var cast_range: float = 0.0
 var radius: float = 0.0
 var max_distance: float = 0.0
 
