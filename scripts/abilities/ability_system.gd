@@ -92,6 +92,7 @@ func request_cast(slot_index: int) -> bool:
 
 	return true
 
+	return true
 
 func confirm_target(selection: Dictionary = {}) -> bool:
 	if active_slot_index < 0 or active_slot_index >= ability_slots.size():
@@ -251,23 +252,32 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
-	if _mode == TargetingMode.NONE:
-		return
+	if _mode != TargetingMode.NONE:
+		if event is InputEventMouseButton and event.pressed:
+			var preview_event := event as InputEventMouseButton
+			if preview_event.button_index == MOUSE_BUTTON_LEFT:
+				confirm_targeting_at(_get_mouse_world_position())
+				get_viewport().set_input_as_handled()
+				return
+			if preview_event.button_index == MOUSE_BUTTON_RIGHT:
+				cancel_targeting()
+				get_viewport().set_input_as_handled()
+				return
 
-	if event is InputEventMouseButton and event.pressed:
-		var preview_event := event as InputEventMouseButton
-		if preview_event.button_index == MOUSE_BUTTON_LEFT:
-			confirm_targeting_at(_get_mouse_world_position())
-			get_viewport().set_input_as_handled()
-			return
-		if preview_event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.is_action_pressed("ability_cancel"):
 			cancel_targeting()
 			get_viewport().set_input_as_handled()
 			return
 
-	if event.is_action_pressed("ability_cancel"):
-		cancel_targeting()
-		get_viewport().set_input_as_handled()
+	if state == AbilityState.AUTO:
+		if event.is_action_pressed("ability_1"):
+			request_cast(0)
+		elif event.is_action_pressed("ability_2"):
+			request_cast(1)
+		elif event.is_action_pressed("ability_3"):
+			request_cast(2)
+		elif event.is_action_pressed("ability_4"):
+			request_cast(3)
 
 	if state == AbilityState.AUTO:
 		if event.is_action_pressed("ability_1"):
