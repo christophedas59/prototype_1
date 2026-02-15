@@ -79,6 +79,9 @@ var is_attacking: bool = false
 var is_dead: bool = false
 
 var current_target: CombatEntity = null
+var stun_remaining: float = 0.0
+var forced_target: CombatEntity = null
+var forced_target_remaining: float = 0.0
 
 
 # -------------------------------------------------------------------
@@ -132,6 +135,19 @@ func _physics_process(delta: float) -> void:
 
 	# Timers
 	attack_timer = max(attack_timer - delta, 0.0)
+	stun_remaining = max(stun_remaining - delta, 0.0)
+	forced_target_remaining = max(forced_target_remaining - delta, 0.0)
+	if forced_target_remaining <= 0.0 or not targeting_comp.is_target_valid(forced_target):
+		forced_target = null
+		forced_target_remaining = 0.0
+
+	if is_stunned():
+		is_attacking = false
+		velocity = Vector2.ZERO
+		velocity += feedback_comp.get_knockback_velocity()
+		move_and_slide()
+		update_animation()
+		return
 
 	# Logique de déplacement / IA
 	if is_player:
@@ -147,7 +163,7 @@ func _physics_process(delta: float) -> void:
 
 	# Look at target (mode manuel uniquement)
 	if look_at_target and not autonomous and velocity.length() <= 1.0:
-		var target := targeting_comp.get_closest_target()
+		var target := _get_priority_target()
 		if target != null:
 			update_facing_from_vector(target.global_position - global_position)
 
@@ -201,7 +217,7 @@ func player_move() -> void:
 func autonomous_move_and_fight() -> void:
 	# Garde la cible tant qu'elle est vivante
 	if not targeting_comp.is_target_valid(current_target):
-		current_target = _as_combat_entity(targeting_comp.get_closest_target())
+		current_target = _as_combat_entity(_get_priority_target())
 
 	if current_target == null:
 		velocity = Vector2.ZERO
@@ -226,7 +242,7 @@ func enemy_move() -> void:
 		velocity = Vector2.ZERO
 		return
 
-	var target := _as_combat_entity(targeting_comp.get_closest_target())
+	var target := _as_combat_entity(_get_priority_target())
 	if target == null:
 		velocity = Vector2.ZERO
 		return
@@ -253,12 +269,16 @@ func _as_combat_entity(target: Node2D) -> CombatEntity:
 	return target as CombatEntity
 
 
+func _get_priority_target() -> Node2D:
+	return targeting_comp.get_closest_target(forced_target)
+
+
 # -------------------------------------------------------------------
 # ATTAQUE / DÉGÂTS / MORT
 # -------------------------------------------------------------------
 
 func try_attack(target: CombatEntity) -> void:
-	if is_dead or is_attacking or attack_timer > 0.0 or target == null:
+	if is_dead or is_stunned() or is_attacking or attack_timer > 0.0 or target == null:
 		return
 	if not _is_target_in_attack_range(target):
 		return
@@ -419,6 +439,9 @@ func die() -> void:
 	is_dead = true
 	is_attacking = false
 	current_target = null
+	stun_remaining = 0.0
+	forced_target = null
+	forced_target_remaining = 0.0
 
 	velocity = Vector2.ZERO
 	feedback_comp.reset()
@@ -486,3 +509,24 @@ func update_animation() -> void:
 	var anim := ("walk_" if moving else "idle_") + facing
 	if frames.has_animation(anim) and visual.animation != anim:
 		visual.play(anim)
+
+
+func apply_stun(duration: float) -> void:
+	if duration <= 0.0 or is_dead:
+		return
+	stun_remaining = max(stun_remaining, duration)
+
+
+func apply_forced_target(target: CombatEntity, duration: float) -> void:
+	if is_dead or duration <= 0.0:
+		return
+	if target == null or target == self or not targeting_comp.is_target_valid(target):
+		forced_target = null
+		forced_target_remaining = 0.0
+		return
+	forced_target = target
+	forced_target_remaining = max(forced_target_remaining, duration)
+
+
+func is_stunned() -> bool:
+	return stun_remaining > 0.0
