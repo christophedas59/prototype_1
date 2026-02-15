@@ -1,15 +1,14 @@
-extends WarriorAbilityBase
-class_name ShieldSlamAbility
+extends "res://scripts/abilities/warrior/warrior_ability_base.gd"
 
 const DAMAGE_RATIO := 0.8
 const STUN_DURATION := 1.2
-const HIT_PAUSE_DURATION := 0.045
-const HIT_PAUSE_SCALE := 0.22
+const HIT_PAUSE_DURATION := 0.06
+const HIT_PAUSE_SCALE := 0.25
 
 func _init() -> void:
 	name = "Shield Slam"
-	icon_path = "res://assets/sprites/ui/components/icons/ui_icon_signal.png"
-	cooldown = 5.0
+	icon_path = "res://assets/sprites/ui/icons/abilities/warrior/shield_slam.png"
+	cooldown = 10.0
 	targeting_type = TargetingType.TARGETED
 	range = 1.6 * WORLD_UNIT_TO_PIXELS
 
