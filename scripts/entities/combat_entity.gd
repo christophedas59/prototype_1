@@ -41,6 +41,10 @@ const DEBUG_HITS := false
 
 # Mouvement
 @export var move_speed: float = 90.0
+@export var use_grid_movement: bool = false
+@export var cell_size: Vector2 = Vector2(16.0, 16.0)
+@export var step_duration: float = 0.12
+@export var cells_per_second: float = 0.0
 
 # Combat
 @export var attack_range: float = 32.0
@@ -84,6 +88,13 @@ var forced_target: CombatEntity = null
 var forced_target_remaining: float = 0.0
 
 var current_target: CombatEntity = null
+var grid_step_in_progress: bool = false
+var grid_step_elapsed: float = 0.0
+var grid_step_time: float = 0.0
+var grid_step_start: Vector2 = Vector2.ZERO
+var grid_step_target: Vector2 = Vector2.ZERO
+var grid_target_cell: Vector2i = Vector2i.ZERO
+var grid_step_direction: Vector2i = Vector2i.ZERO
 
 
 # -------------------------------------------------------------------
@@ -143,10 +154,15 @@ func _physics_process(delta: float) -> void:
 		forced_target = null
 
 	if stun_remaining > 0.0:
+		grid_step_in_progress = false
+		grid_step_direction = Vector2i.ZERO
 		velocity = Vector2.ZERO
 		move_and_slide()
 		update_animation()
 		return
+
+	if use_grid_movement:
+		_advance_grid_step(delta)
 
 	# Logique de déplacement / IA
 	if is_player:
@@ -164,7 +180,10 @@ func _physics_process(delta: float) -> void:
 	if look_at_target and not autonomous and velocity.length() <= 1.0:
 		var target := targeting_comp.get_closest_target()
 		if target != null:
-			update_facing_from_vector(target.global_position - global_position)
+			if use_grid_movement:
+				update_facing_from_cardinal(_cardinal_direction_from_vector(target.global_position - global_position, true))
+			else:
+				update_facing_from_vector(target.global_position - global_position)
 
 	# Physics
 	move_and_slide()
@@ -201,6 +220,16 @@ func player_move() -> void:
 	if is_attacking:
 		velocity = Vector2.ZERO
 		return
+	if use_grid_movement:
+		if grid_step_in_progress:
+			return
+
+		var input_dir := Vector2(
+			Input.get_action_strength("move_right") - Input.get_action_strength("move_left"),
+			Input.get_action_strength("move_down") - Input.get_action_strength("move_up")
+		)
+		_attempt_grid_step(_cardinal_direction_from_vector(input_dir, true))
+		return
 
 	var input_dir := Vector2(
 		Input.get_action_strength("move_right") - Input.get_action_strength("move_left"),
@@ -216,6 +245,8 @@ func player_move() -> void:
 func autonomous_move_and_fight() -> void:
 	if ability_control_locked:
 		velocity = Vector2.ZERO
+		return
+	if use_grid_movement and grid_step_in_progress:
 		return
 
 	# Garde la cible tant qu'elle est vivante
@@ -236,6 +267,9 @@ func autonomous_move_and_fight() -> void:
 		velocity = Vector2.ZERO
 		try_attack(current_target)
 		return
+	if use_grid_movement:
+		_attempt_grid_step(_manhattan_direction_to_target(current_target, true))
+		return
 
 	velocity = Vector2.ZERO if is_attacking else to_target.normalized() * move_speed
 
@@ -243,6 +277,8 @@ func autonomous_move_and_fight() -> void:
 func enemy_move() -> void:
 	if is_attacking:
 		velocity = Vector2.ZERO
+		return
+	if use_grid_movement and grid_step_in_progress:
 		return
 
 	var target := forced_target if targeting_comp.is_target_valid(forced_target) else _as_combat_entity(targeting_comp.get_closest_target())
@@ -262,8 +298,125 @@ func enemy_move() -> void:
 		velocity = Vector2.ZERO
 		try_attack(target)
 		return
+	if use_grid_movement:
+		_attempt_grid_step(_manhattan_direction_to_target(target, false))
+		return
 
 	velocity = to_target.normalized() * move_speed
+
+
+func _advance_grid_step(delta: float) -> void:
+	if not grid_step_in_progress:
+		return
+
+	grid_step_elapsed += delta
+	var progress := clampf(grid_step_elapsed / max(grid_step_time, 0.0001), 0.0, 1.0)
+	var next_position := grid_step_start.lerp(grid_step_target, progress)
+	velocity = (next_position - global_position) / max(delta, 0.0001)
+
+	if progress >= 1.0:
+		grid_step_in_progress = false
+		grid_step_direction = Vector2i.ZERO
+		global_position = grid_step_target
+		velocity = Vector2.ZERO
+
+
+func _attempt_grid_step(direction: Vector2i) -> bool:
+	if not use_grid_movement or grid_step_in_progress:
+		return false
+	if direction == Vector2i.ZERO:
+		velocity = Vector2.ZERO
+		return false
+
+	var start_cell := _world_to_cell(global_position)
+	var target_cell := start_cell + direction
+	if not _is_grid_cell_walkable(target_cell):
+		velocity = Vector2.ZERO
+		return false
+
+	grid_step_in_progress = true
+	grid_step_elapsed = 0.0
+	grid_step_time = _get_step_time()
+	grid_step_start = global_position
+	grid_step_target = _cell_to_world_center(target_cell)
+	grid_target_cell = target_cell
+	grid_step_direction = direction
+	update_facing_from_cardinal(direction)
+	return true
+
+
+func _manhattan_direction_to_target(target: CombatEntity, prefer_x_axis: bool) -> Vector2i:
+	if target == null:
+		return Vector2i.ZERO
+
+	var from_cell := _world_to_cell(global_position)
+	var target_cell := _world_to_cell(target.global_position)
+	var delta := target_cell - from_cell
+
+	if delta == Vector2i.ZERO:
+		return Vector2i.ZERO
+
+	if prefer_x_axis:
+		if delta.x != 0:
+			return Vector2i(signi(delta.x), 0)
+		if delta.y != 0:
+			return Vector2i(0, signi(delta.y))
+	else:
+		if delta.y != 0:
+			return Vector2i(0, signi(delta.y))
+		if delta.x != 0:
+			return Vector2i(signi(delta.x), 0)
+
+	return Vector2i.ZERO
+
+
+func _cardinal_direction_from_vector(v: Vector2, prefer_x_axis: bool) -> Vector2i:
+	if v.length() < 0.001:
+		return Vector2i.ZERO
+
+	if prefer_x_axis:
+		if abs(v.x) >= abs(v.y):
+			return Vector2i(1 if v.x > 0.0 else -1, 0)
+		return Vector2i(0, 1 if v.y > 0.0 else -1)
+
+	if abs(v.y) >= abs(v.x):
+		return Vector2i(0, 1 if v.y > 0.0 else -1)
+	return Vector2i(1 if v.x > 0.0 else -1, 0)
+
+
+func _world_to_cell(world_pos: Vector2) -> Vector2i:
+	var safe_cell_size := _get_safe_cell_size()
+	return Vector2i(
+		floori(world_pos.x / safe_cell_size.x),
+		floori(world_pos.y / safe_cell_size.y)
+	)
+
+
+func _cell_to_world_center(cell: Vector2i) -> Vector2:
+	var safe_cell_size := _get_safe_cell_size()
+	return Vector2(
+		(float(cell.x) + 0.5) * safe_cell_size.x,
+		(float(cell.y) + 0.5) * safe_cell_size.y
+	)
+
+
+func _is_grid_cell_walkable(cell: Vector2i) -> bool:
+	var motion := _cell_to_world_center(cell) - global_position
+	if motion.length() <= 0.001:
+		return false
+	return not test_move(global_transform, motion)
+
+
+func _get_safe_cell_size() -> Vector2:
+	return Vector2(max(cell_size.x, 1.0), max(cell_size.y, 1.0))
+
+
+func _get_step_time() -> float:
+	if step_duration > 0.0:
+		return step_duration
+	if cells_per_second > 0.0:
+		return 1.0 / cells_per_second
+	return 0.12
 
 
 func _as_combat_entity(target: Node2D) -> CombatEntity:
@@ -497,6 +650,10 @@ func die() -> void:
 # -------------------------------------------------------------------
 
 func update_facing_from_vector(v: Vector2) -> void:
+	if use_grid_movement:
+		update_facing_from_cardinal(_cardinal_direction_from_vector(v, true))
+		return
+
 	if v.length() < 0.001:
 		return
 
@@ -504,6 +661,19 @@ func update_facing_from_vector(v: Vector2) -> void:
 		facing = "right" if v.x > 0 else "left"
 	else:
 		facing = "down" if v.y > 0 else "up"
+
+
+func update_facing_from_cardinal(direction: Vector2i) -> void:
+	if direction == Vector2i.ZERO:
+		return
+	if direction.x > 0:
+		facing = "right"
+	elif direction.x < 0:
+		facing = "left"
+	elif direction.y > 0:
+		facing = "down"
+	elif direction.y < 0:
+		facing = "up"
 
 
 func update_animation() -> void:
