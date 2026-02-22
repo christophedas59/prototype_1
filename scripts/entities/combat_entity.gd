@@ -373,7 +373,7 @@ func _world_to_combat_cell(world_position: Vector2) -> Vector2i:
 	if grid_combat_system != null:
 		return grid_combat_system.world_to_cell(world_position)
 
-	var fallback_cell_size := max(1.0, attack_range)
+	var fallback_cell_size: float = maxf(1.0, attack_range)
 	return Vector2i(
 		int(round(world_position.x / fallback_cell_size)),
 		int(round(world_position.y / fallback_cell_size))
