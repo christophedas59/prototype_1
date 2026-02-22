@@ -26,6 +26,7 @@ class_name CombatEntity
 @onready var hurtbox_comp: HurtboxComponent = $Hurtbox
 @onready var melee_hitbox_comp: MeleeHitboxComponent = $AttackHitbox
 @onready var ability_system: Node = get_node_or_null("AbilitySystem")
+var grid_combat_system: GridCombatSystem = null
 
 const DEBUG_HITS := false
 
@@ -84,6 +85,7 @@ var forced_target: CombatEntity = null
 var forced_target_remaining: float = 0.0
 
 var current_target: CombatEntity = null
+var _last_grid_cell: Vector2i = Vector2i.ZERO
 
 
 # -------------------------------------------------------------------
@@ -125,6 +127,9 @@ func _ready() -> void:
 
 	if not hurtbox_comp.hit_received.is_connected(_on_hurtbox_hit_received):
 		hurtbox_comp.hit_received.connect(_on_hurtbox_hit_received)
+
+	grid_combat_system = _resolve_grid_combat_system()
+	_register_to_grid_system()
 
 
 func _physics_process(delta: float) -> void:
@@ -168,6 +173,7 @@ func _physics_process(delta: float) -> void:
 
 	# Physics
 	move_and_slide()
+	_sync_grid_reservation_from_world_position()
 
 	update_animation()
 
@@ -252,13 +258,20 @@ func enemy_move() -> void:
 
 	current_target = target
 
-	var to_target := target.global_position - global_position
+	var target_position := target.global_position
+	if grid_combat_system == null:
+		grid_combat_system = _resolve_grid_combat_system()
+	if grid_combat_system != null:
+		var assigned_cell := grid_combat_system.assign_attack_slot(self, target)
+		target_position = grid_combat_system.cell_to_world(assigned_cell)
+
+	var to_target := target_position - global_position
 	var dist := to_target.length()
 	var trigger_range := _get_attack_trigger_range(target)
 
 	update_facing_from_vector(to_target)
 
-	if dist <= trigger_range:
+	if dist <= trigger_range and _can_attack_current_target_in_grid(target):
 		velocity = Vector2.ZERO
 		try_attack(target)
 		return
@@ -461,6 +474,7 @@ func die() -> void:
 
 	velocity = Vector2.ZERO
 	feedback_comp.reset()
+	_release_grid_allocations()
 
 	# Cache les barres
 	health_bar_comp.hide_bars()
@@ -525,3 +539,58 @@ func update_animation() -> void:
 	var anim := ("walk_" if moving else "idle_") + facing
 	if frames.has_animation(anim) and visual.animation != anim:
 		visual.play(anim)
+
+
+func _resolve_grid_combat_system() -> GridCombatSystem:
+	var systems := get_tree().get_nodes_in_group("grid_combat_system")
+	if not systems.is_empty():
+		return systems[0] as GridCombatSystem
+
+	var parent := get_parent()
+	while parent != null:
+		var candidate := parent.get_node_or_null("GridCombatSystem")
+		if candidate != null and candidate is GridCombatSystem:
+			return candidate as GridCombatSystem
+		parent = parent.get_parent()
+
+	return null
+
+
+func _register_to_grid_system() -> void:
+	if grid_combat_system == null:
+		return
+
+	_last_grid_cell = grid_combat_system.world_to_cell(global_position)
+	grid_combat_system.reserve_cell(_last_grid_cell, self)
+
+
+func _sync_grid_reservation_from_world_position() -> void:
+	if grid_combat_system == null:
+		grid_combat_system = _resolve_grid_combat_system()
+	if grid_combat_system == null or is_dead:
+		return
+
+	var current_cell := grid_combat_system.world_to_cell(global_position)
+	if current_cell == _last_grid_cell:
+		return
+
+	if grid_combat_system.reserve_cell(current_cell, self):
+		_last_grid_cell = current_cell
+
+
+func _release_grid_allocations() -> void:
+	if grid_combat_system == null:
+		return
+	grid_combat_system.notify_entity_died(self)
+
+
+func _can_attack_current_target_in_grid(target: CombatEntity) -> bool:
+	if grid_combat_system == null:
+		return true
+	if not is_enemy:
+		return true
+
+	var attacker_cell := grid_combat_system.world_to_cell(global_position)
+	var target_cell := grid_combat_system.world_to_cell(target.global_position)
+	var offset := attacker_cell - target_cell
+	return abs(offset.x) + abs(offset.y) == 1 and grid_combat_system.attacker_has_adjacent_slot(self)
