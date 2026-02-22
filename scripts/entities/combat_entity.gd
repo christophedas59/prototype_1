@@ -89,6 +89,7 @@ var forced_target_remaining: float = 0.0
 var current_target: CombatEntity = null
 var _last_grid_cell: Vector2i = Vector2i.ZERO
 var _grid_move_target_cell: Vector2i = Vector2i(-99999, -99999)
+var _grid_move_origin_cell: Vector2i = Vector2i(-99999, -99999)
 
 
 # -------------------------------------------------------------------
@@ -394,24 +395,42 @@ func _to_cardinal_direction(direction: Vector2) -> Vector2:
 
 
 func _compute_grid_velocity(cardinal_direction: Vector2) -> Vector2:
-	if cardinal_direction == Vector2.ZERO:
-		if _grid_move_target_cell == Vector2i(-99999, -99999):
-			return Vector2.ZERO
-	else:
+	var has_active_step := _grid_move_target_cell != Vector2i(-99999, -99999)
+
+	if cardinal_direction != Vector2.ZERO and not has_active_step:
 		var current_cell := _world_to_combat_cell(global_position)
+		_grid_move_origin_cell = current_cell
 		_grid_move_target_cell = current_cell + Vector2i(int(cardinal_direction.x), int(cardinal_direction.y))
+		has_active_step = true
+
+	if not has_active_step:
+		return Vector2.ZERO
 
 	if _grid_move_target_cell == Vector2i(-99999, -99999):
 		return Vector2.ZERO
 
 	var target_world := grid_combat_system.cell_to_world(_grid_move_target_cell) if grid_combat_system != null else Vector2(_grid_move_target_cell.x, _grid_move_target_cell.y)
-	var to_target := target_world - global_position
-	if to_target.length() <= 0.5:
+	var origin_world := grid_combat_system.cell_to_world(_grid_move_origin_cell) if grid_combat_system != null else Vector2(_grid_move_origin_cell.x, _grid_move_origin_cell.y)
+
+	var moving_horizontally := _grid_move_target_cell.y == _grid_move_origin_cell.y
+	if moving_horizontally:
+		global_position.y = origin_world.y
+		var delta_x := target_world.x - global_position.x
+		if abs(delta_x) <= 0.5:
+			global_position = target_world
+			_grid_move_target_cell = Vector2i(-99999, -99999)
+			_grid_move_origin_cell = Vector2i(-99999, -99999)
+			return Vector2.ZERO
+		return Vector2(sign(delta_x) * move_speed, 0.0)
+
+	global_position.x = origin_world.x
+	var delta_y := target_world.y - global_position.y
+	if abs(delta_y) <= 0.5:
 		global_position = target_world
 		_grid_move_target_cell = Vector2i(-99999, -99999)
+		_grid_move_origin_cell = Vector2i(-99999, -99999)
 		return Vector2.ZERO
-
-	return to_target.normalized() * move_speed
+	return Vector2(0.0, sign(delta_y) * move_speed)
 
 
 func _get_attack_trigger_range(target: CombatEntity) -> float:
