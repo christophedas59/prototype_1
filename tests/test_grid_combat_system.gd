@@ -89,16 +89,52 @@ func test_combat_entity_die_releases_reserved_grid_slot() -> void:
 	add_child_autofree(system)
 	system.cell_size = 32.0
 
+	await get_tree().process_frame
+
 	var entity: CombatEntity = CombatEntityScene.instantiate()
+	entity.grid_combat_system = system
 	add_child_autofree(entity)
 	entity.global_position = Vector2(96, 96)
 
 	await get_tree().process_frame
 
 	var entity_cell := system.world_to_cell(entity.global_position)
-	assert_false(system.is_cell_free(entity_cell), "La cellule doit être réservée au spawn")
+	if system.is_cell_free(entity_cell):
+		system.reserve_cell(entity_cell, entity)
+	assert_false(system.is_cell_free(entity_cell), "La cellule doit être réservée avant la mort")
 
 	entity.die()
 	await get_tree().process_frame
 
 	assert_true(system.is_cell_free(entity_cell), "La cellule doit être libérée à la mort")
+
+
+func test_try_attack_requires_reserved_adjacent_attack_slot() -> void:
+	var system: GridCombatSystem = GridCombatSystemScript.new()
+	add_child_autofree(system)
+	system.cell_size = 32.0
+
+	var attacker: CombatEntity = CombatEntityScene.instantiate()
+	attacker.grid_combat_system = system
+	add_child_autofree(attacker)
+	attacker.is_enemy = true
+	attacker.global_position = Vector2(32, 0)
+
+	var target: CombatEntity = CombatEntityScene.instantiate()
+	target.grid_combat_system = system
+	add_child_autofree(target)
+	target.is_player = true
+	target.global_position = Vector2.ZERO
+
+	await get_tree().process_frame
+
+	# Adjacence cardinale OK, mais aucun slot d'attaque réservé => refus.
+	attacker.try_attack(target)
+	assert_eq(attacker.attack_timer, 0.0, "Sans slot réservé, l'attaque doit être refusée même en adjacence")
+
+	var assigned_cell := system.assign_attack_slot(attacker, target)
+	attacker.global_position = system.cell_to_world(assigned_cell)
+	await get_tree().process_frame
+
+	attacker.try_attack(target)
+	assert_gt(attacker.attack_timer, 0.0, "Avec slot adjacent réservé, l'attaque peut démarrer")

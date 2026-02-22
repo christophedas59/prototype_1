@@ -28,18 +28,17 @@ func test_receive_hit_signal_reaches_entity_and_reduces_hp() -> void:
 	assert_eq(target.hp, initial_hp - 3, "receive_hit doit déclencher le handler d'entité et appliquer les dégâts")
 
 
-func test_attack_range_does_not_start_before_hitbox_hurtbox_contact() -> void:
+func test_attack_range_uses_cardinal_manhattan_adjacency() -> void:
 	var attacker := _spawn_entity(Vector2.ZERO)
 	var target := _spawn_entity(Vector2.ZERO)
 
 	await get_tree().process_frame
 
-	var contact_range := attacker._get_melee_contact_range(target)
-	assert_gt(contact_range, 0.0, "Le test nécessite une portée de contact valide")
+	target.global_position = Vector2(32, 0)
+	assert_true(attacker._is_target_in_attack_range(target), "Une cible sur case cardinale adjacente doit être attaquable")
 
-	target.global_position = Vector2(contact_range + 0.5, 0)
+	target.global_position = Vector2(32, 32)
+	assert_false(attacker._is_target_in_attack_range(target), "Une cible en diagonale ne doit pas être attaquable")
 
-	assert_false(
-		attacker._is_target_in_attack_range(target),
-		"L'attaque ne doit pas démarrer hors contact hitbox/hurtbox, sinon aucun hit ne peut être détecté"
-	)
+	target.global_position = Vector2(64, 0)
+	assert_false(attacker._is_target_in_attack_range(target), "Une cible à distance Manhattan > 1 ne doit pas être attaquable")

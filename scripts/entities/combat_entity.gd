@@ -233,12 +233,10 @@ func autonomous_move_and_fight() -> void:
 		return
 
 	var to_target := current_target.global_position - global_position
-	var dist := to_target.length()
-	var trigger_range := _get_attack_trigger_range(current_target)
 
 	update_facing_from_vector(to_target)
 
-	if dist <= trigger_range:
+	if _is_target_in_attack_range(current_target) and _can_attack_current_target_in_grid(current_target):
 		velocity = Vector2.ZERO
 		try_attack(current_target)
 		return
@@ -266,12 +264,10 @@ func enemy_move() -> void:
 		target_position = grid_combat_system.cell_to_world(assigned_cell)
 
 	var to_target := target_position - global_position
-	var dist := to_target.length()
-	var trigger_range := _get_attack_trigger_range(target)
 
 	update_facing_from_vector(to_target)
 
-	if dist <= trigger_range and _can_attack_current_target_in_grid(target):
+	if _is_target_in_attack_range(target) and _can_attack_current_target_in_grid(target):
 		velocity = Vector2.ZERO
 		try_attack(target)
 		return
@@ -292,6 +288,8 @@ func _as_combat_entity(target: Node2D) -> CombatEntity:
 func try_attack(target: CombatEntity) -> void:
 	if ability_control_locked or is_dead or is_attacking or attack_timer > 0.0 or target == null:
 		return
+	if not _can_attack_current_target_in_grid(target):
+		return
 	if not _is_target_in_attack_range(target):
 		return
 
@@ -304,7 +302,7 @@ func try_attack(target: CombatEntity) -> void:
 
 	play_attack_animation()
 
-	# Déclenche la hitbox de mêlée (détection via hurtbox + événements)
+	# Déclenche la hitbox de mêlée (VFX/feedback); la portée gameplay est validée via grille.
 	if DEBUG_HITS:
 		print_debug(
 			"[hits] try_attack/start_swing",
@@ -346,9 +344,23 @@ func set_ability_control_locked(is_locked: bool) -> void:
 func _is_target_in_attack_range(target: CombatEntity) -> bool:
 	if target == null:
 		return false
+	var attacker_cell := _world_to_combat_cell(global_position)
+	var target_cell := _world_to_combat_cell(target.global_position)
+	var offset := attacker_cell - target_cell
+	return abs(offset.x) + abs(offset.y) == 1
 
-	var dist := global_position.distance_to(target.global_position)
-	return dist <= _get_attack_trigger_range(target)
+
+func _world_to_combat_cell(world_position: Vector2) -> Vector2i:
+	if grid_combat_system == null:
+		grid_combat_system = _resolve_grid_combat_system()
+	if grid_combat_system != null:
+		return grid_combat_system.world_to_cell(world_position)
+
+	var fallback_cell_size := max(1.0, attack_range)
+	return Vector2i(
+		int(round(world_position.x / fallback_cell_size)),
+		int(round(world_position.y / fallback_cell_size))
+	)
 
 
 func _get_attack_trigger_range(target: CombatEntity) -> float:
@@ -586,8 +598,6 @@ func _release_grid_allocations() -> void:
 
 func _can_attack_current_target_in_grid(target: CombatEntity) -> bool:
 	if grid_combat_system == null:
-		return true
-	if not is_enemy:
 		return true
 
 	var attacker_cell := grid_combat_system.world_to_cell(global_position)

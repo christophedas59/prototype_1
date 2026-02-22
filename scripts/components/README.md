@@ -123,24 +123,34 @@ feedback_comp.reset()
 
 ### 4. HurtboxComponent
 
-**Responsabilité** : Point d'entrée des dégâts via événements.
+**Responsabilité** : Point d'entrée des dégâts via événements (principalement VFX/feedback).
 
 **Fonctionnalités** :
 - Reçoit une attaque via `receive_hit(attacker, amount, hit_position)`
 - Émet `hit_received(attacker, amount, hit_position)`
 - Permet de découpler la détection de collision et l'application des dégâts
+- Peut être conservé pour la compatibilité visuelle (impacts, flash, audio), même si la portée gameplay est pilotée par la grille
 
 ---
 
 ### 5. MeleeHitboxComponent
 
-**Responsabilité** : Détection d'impact de mêlée pendant une fenêtre d'attaque courte.
+**Responsabilité** : Détection d'impact de mêlée pendant une fenêtre d'attaque courte (pipeline visuel/événementiel).
 
 **Fonctionnalités** :
 - Activation temporaire de la hitbox via `start_swing(attacker, amount)`
 - Détection des `HurtboxComponent` touchées
 - Anti multi-hit sur la même cible pendant un swing
 - Filtrage d'alliés via `get_team()` si disponible
+
+---
+
+## 🧭 Modèle gameplay actuel (vérité portée/adjacence)
+
+- La portée d'attaque de mêlée est validée sur la **grille** avec une distance de Manhattan.
+- Une attaque est autorisée uniquement si la cible est sur une case **adjacente cardinale** (`manhattan == 1`).
+- En contexte grille, un attaquant doit aussi disposer d'un **slot d'attaque adjacent réservé** avant `try_attack`.
+- Les `Area2D` (`AttackHitbox` / `Hurtbox`) peuvent rester en place pour les effets visuels et événements d'impact.
 
 ---
 
