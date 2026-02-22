@@ -18,6 +18,7 @@ class_name CombatFeedback
 @export var i_frames_duration: float = 0.25
 @export var knockback_force: float = 140.0
 @export var knockback_friction: float = 800.0
+@export var grid_mode: bool = false
 @export var enable_hit_pause: bool = true
 @export var hit_pause_duration: float = 0.04
 @export var hit_pause_scale: float = 0.05
@@ -96,9 +97,12 @@ func apply_damage_feedback(attacker_position: Vector2, entity_position: Vector2)
 	if enable_hit_pause:
 		HitPauseManager.request_hit_pause(hit_pause_duration, hit_pause_scale)
 
-	# Knockback
-	var dir := (entity_position - attacker_position).normalized()
-	knockback_velocity = dir * knockback_force
+	# Knockback (désactivé en mode grille)
+	if grid_mode:
+		knockback_velocity = Vector2.ZERO
+	else:
+		var dir := (entity_position - attacker_position).normalized()
+		knockback_velocity = dir * knockback_force
 
 	# Flash visuel
 	apply_flash()

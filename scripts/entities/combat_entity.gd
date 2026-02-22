@@ -57,6 +57,8 @@ const DEBUG_HITS := false
 
 # Knockback
 @export var facing_lock_on_knockback: bool = true
+@export var grid_mode: bool = false
+@export var grid_push_on_hit: bool = true
 
 
 # -------------------------------------------------------------------
@@ -162,8 +164,9 @@ func _physics_process(delta: float) -> void:
 	elif is_enemy:
 		enemy_move()
 
-	# Knockback
-	velocity += feedback_comp.get_knockback_velocity()
+	# Knockback continu (désactivé en mode grille)
+	if not grid_mode:
+		velocity += feedback_comp.get_knockback_velocity()
 
 	# Look at target (mode manuel uniquement)
 	if look_at_target and not autonomous and velocity.length() <= 1.0:
@@ -196,6 +199,7 @@ func _initialize_components() -> void:
 	targeting_comp.initialize(self, target_group)
 
 	# CombatFeedback
+	feedback_comp.grid_mode = grid_mode
 	feedback_comp.initialize(visual)
 
 
@@ -466,6 +470,8 @@ func take_damage(amount: int, from: Node2D = null) -> void:
 	# Feedbacks via composant
 	if from != null and from is Node2D:
 		feedback_comp.apply_damage_feedback(from.global_position, global_position)
+		if grid_mode and grid_push_on_hit:
+			_try_grid_push_from_attacker(from)
 	else:
 		feedback_comp.apply_flash()
 
@@ -588,6 +594,37 @@ func _sync_grid_reservation_from_world_position() -> void:
 
 	if grid_combat_system.reserve_cell(current_cell, self):
 		_last_grid_cell = current_cell
+
+
+func _try_grid_push_from_attacker(attacker: Node2D) -> void:
+	if attacker == null:
+		return
+
+	if grid_combat_system == null:
+		grid_combat_system = _resolve_grid_combat_system()
+	if grid_combat_system == null:
+		return
+
+	var entity_cell := grid_combat_system.world_to_cell(global_position)
+	var attacker_cell := grid_combat_system.world_to_cell(attacker.global_position)
+	var delta := entity_cell - attacker_cell
+
+	var push_direction := Vector2i.ZERO
+	if abs(delta.x) >= abs(delta.y):
+		if delta.x == 0:
+			return
+		push_direction = Vector2i.RIGHT if delta.x > 0 else Vector2i.LEFT
+	else:
+		if delta.y == 0:
+			return
+		push_direction = Vector2i.DOWN if delta.y > 0 else Vector2i.UP
+
+	var target_cell := entity_cell + push_direction
+	if not grid_combat_system.reserve_cell(target_cell, self):
+		return
+
+	_last_grid_cell = target_cell
+	global_position = grid_combat_system.cell_to_world(target_cell)
 
 
 func _release_grid_allocations() -> void:
