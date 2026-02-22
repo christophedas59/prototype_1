@@ -88,6 +88,7 @@ var forced_target_remaining: float = 0.0
 
 var current_target: CombatEntity = null
 var _last_grid_cell: Vector2i = Vector2i.ZERO
+var _grid_move_target_cell: Vector2i = Vector2i(-99999, -99999)
 
 
 # -------------------------------------------------------------------
@@ -217,8 +218,15 @@ func player_move() -> void:
 		Input.get_action_strength("move_down") - Input.get_action_strength("move_up")
 	)
 
-	if input_dir.length() > 0.0:
-		input_dir = input_dir.normalized()
+	if grid_mode:
+		input_dir = _to_cardinal_direction(input_dir)
+	else:
+		if input_dir.length() > 0.0:
+			input_dir = input_dir.normalized()
+
+	if grid_mode:
+		velocity = _compute_grid_velocity(input_dir)
+		return
 
 	velocity = input_dir * move_speed
 
@@ -274,6 +282,10 @@ func enemy_move() -> void:
 	if _is_target_in_attack_range(target) and _can_attack_current_target_in_grid(target):
 		velocity = Vector2.ZERO
 		try_attack(target)
+		return
+
+	if grid_mode:
+		velocity = _compute_grid_velocity(_to_cardinal_direction(to_target))
 		return
 
 	velocity = to_target.normalized() * move_speed
@@ -365,6 +377,41 @@ func _world_to_combat_cell(world_position: Vector2) -> Vector2i:
 		int(round(world_position.x / fallback_cell_size)),
 		int(round(world_position.y / fallback_cell_size))
 	)
+
+
+func _to_cardinal_direction(direction: Vector2) -> Vector2:
+	if direction.length() <= 0.001:
+		return Vector2.ZERO
+
+	if abs(direction.x) >= abs(direction.y):
+		if abs(direction.x) <= 0.001:
+			return Vector2.ZERO
+		return Vector2(sign(direction.x), 0)
+
+	if abs(direction.y) <= 0.001:
+		return Vector2.ZERO
+	return Vector2(0, sign(direction.y))
+
+
+func _compute_grid_velocity(cardinal_direction: Vector2) -> Vector2:
+	if cardinal_direction == Vector2.ZERO:
+		if _grid_move_target_cell == Vector2i(-99999, -99999):
+			return Vector2.ZERO
+	else:
+		var current_cell := _world_to_combat_cell(global_position)
+		_grid_move_target_cell = current_cell + Vector2i(int(cardinal_direction.x), int(cardinal_direction.y))
+
+	if _grid_move_target_cell == Vector2i(-99999, -99999):
+		return Vector2.ZERO
+
+	var target_world := grid_combat_system.cell_to_world(_grid_move_target_cell) if grid_combat_system != null else Vector2(_grid_move_target_cell.x, _grid_move_target_cell.y)
+	var to_target := target_world - global_position
+	if to_target.length() <= 0.5:
+		global_position = target_world
+		_grid_move_target_cell = Vector2i(-99999, -99999)
+		return Vector2.ZERO
+
+	return to_target.normalized() * move_speed
 
 
 func _get_attack_trigger_range(target: CombatEntity) -> float:
